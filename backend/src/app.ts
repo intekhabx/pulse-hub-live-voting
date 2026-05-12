@@ -1,21 +1,39 @@
 import express from 'express';
-import { type Application, type Request, type Response } from "express";
+import { type Application, type Response } from "express";
 import helmet from 'helmet';
-
+import ApiResponse from './utils/api-response.utils';
+import authRoute from  './modules/auth/auth.route'
+import cookieParser from 'cookie-parser';
+import {rateLimit} from 'express-rate-limit';
+import globalErrorHandler from './middleware/global-error.middleware';
 
 export function createApplication() {
   const app: Application = express();
 
+
+  const limiter = rateLimit({
+    windowMs: 1000 * 60 * 15, //15min
+    limit: 100,
+    message: "too many request from your IP, please retry after sometime"
+  })
+
   // middlewares
   app.use(helmet()); //set safty header for http request
+  app.use(limiter);
   app.use(express.json({limit: '16kb'}));
+  app.use(cookieParser());
 
 
   // routes
-  app.get('/health', (req: Request, res: Response)=>{
-    res.status(200).json({healthy: true});
+  app.use('/api/auth', authRoute);
+
+
+  app.get('/health', (_, res: Response)=>{
+    ApiResponse.ok(res, "server is healthy", {healthy: true})
   })
 
+  
+  app.use(globalErrorHandler);
   
   return app;
 }
