@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import http from 'node:http';
+import {Server} from 'socket.io';
 import { createApplication } from './app';
 import dbConnection from './config/db.config';
 
@@ -10,7 +12,22 @@ async function main(){
     const PORT:number = Number(process.env.PORT) || 3000;
     const app = createApplication();
 
-    app.listen(PORT, ()=>{
+    const server = http.createServer(app);
+    const io = new Server(server, {
+      cors: {
+        origin: "*"
+      }
+    });
+
+    io.on("connection", (socket)=>{
+      console.log("a socket is connected", socket.id);
+
+      socket.on("disconnect", ()=>{
+        console.log("disconnected one socket", socket.id)
+      })
+    })
+
+    server.listen(PORT, ()=>{
       console.log(`Server is listening on http://localhost:${PORT}`);
     })
   } 

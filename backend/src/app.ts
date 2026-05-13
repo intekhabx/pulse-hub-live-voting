@@ -5,6 +5,7 @@ import ApiResponse from './utils/api-response.utils';
 import authRoute from  './modules/auth/auth.route'
 import cookieParser from 'cookie-parser';
 import {rateLimit} from 'express-rate-limit';
+import cors from 'cors';
 import globalErrorHandler from './middleware/global-error.middleware';
 
 export function createApplication() {
@@ -22,6 +23,12 @@ export function createApplication() {
   app.use(limiter);
   app.use(express.json({limit: '16kb'}));
   app.use(cookieParser());
+  app.use(cors({
+    origin: [
+      "*"
+    ],
+    credentials: true
+  }))
 
 
   // routes
