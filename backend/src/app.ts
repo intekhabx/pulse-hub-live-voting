@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import {rateLimit} from 'express-rate-limit';
 import cors from 'cors';
 import globalErrorHandler from './middleware/global-error.middleware';
+import pollsRoute from './modules/polls/polls.route';
 
 export function createApplication() {
   const app: Application = express();
@@ -25,7 +26,7 @@ export function createApplication() {
   app.use(cookieParser());
   app.use(cors({
     origin: [
-      "*"
+      "http://localhost:5173",
     ],
     credentials: true
   }))
@@ -33,6 +34,7 @@ export function createApplication() {
 
   // routes
   app.use('/api/auth', authRoute);
+  app.use('/api/polls', pollsRoute);
 
 
   app.get('/health', (_, res: Response)=>{

@@ -7,7 +7,6 @@ import userModel from "./auth.model";
 
 import { type NextFunction, type Request, type Response } from "express";
 import type { IRegisterUser, ILoginUser, AuthRequest } from '../../types/index.types';
-import { resolve } from 'dns';
 
 
 function makeTokenHash(token: string){
@@ -55,8 +54,12 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
     maxAge: 7 * 24 * 60 * 60 * 1000 //7days
   })
 
-  const userObj = user.toObject();
-  userObj.password = ""
+  const userObj = {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userId: user._id
+  }
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken})
 })
