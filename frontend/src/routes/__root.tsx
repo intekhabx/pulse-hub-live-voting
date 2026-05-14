@@ -1,18 +1,18 @@
-import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
-const RootLayout = () => (
-  <>
-    <div className="p-2 flex gap-2">
-      <Link to="/" className="[&.active]:font-bold">
-        Home
-      </Link>{' '}
-      <Link to="/about" className="[&.active]:font-bold">
-        About
-      </Link>
-    </div>
-    <hr />
-    <Outlet />
-  </>
-)
+function RootLayout() {
+  const pathname = useRouterState({ select: s => s.location.pathname })
+  const isAuthPage = ['/login', '/register', '/dashboard'].includes(pathname)
+
+  return (
+    <>
+      {!isAuthPage && <Navbar />}
+      <Outlet />
+      {!isAuthPage && <Footer />}
+    </>
+  )
+}
 
 export const Route = createRootRoute({ component: RootLayout })
