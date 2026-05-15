@@ -17,6 +17,8 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
     setDark(!dark);
   }
 
+  const [dashboardData, setDashboardData] = useState();
+
   const [socket, setSocket] = useState<any>(null);
 
   useEffect(()=>{
