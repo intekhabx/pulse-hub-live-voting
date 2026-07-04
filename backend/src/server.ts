@@ -5,6 +5,8 @@ import { createApplication } from './app';
 import dbConnection from './config/db.config';
 
 
+export const io = new Server();
+
 async function main(){
   try {
     await dbConnection();
@@ -13,7 +15,7 @@ async function main(){
     const app = createApplication();
 
     const server = http.createServer(app);
-    const io = new Server(server, {
+    io.attach(server, {
       cors: {
         origin: "*"
       }

@@ -19,7 +19,11 @@ const responseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Poll"
   },
-  answer: [
+  userId:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  answers: [
     answerSchema
   ],
   submittedAt: {

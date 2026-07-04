@@ -8,6 +8,7 @@ import {rateLimit} from 'express-rate-limit';
 import cors from 'cors';
 import globalErrorHandler from './middleware/global-error.middleware';
 import pollsRoute from './modules/polls/polls.route';
+import responseRoute from './modules/response/response.route';
 
 export function createApplication() {
   const app: Application = express();
@@ -30,11 +31,13 @@ export function createApplication() {
     ],
     credentials: true
   }))
+  // app.options("*", cors());
 
 
   // routes
   app.use('/api/auth', authRoute);
   app.use('/api/polls', pollsRoute);
+  app.use('/api/response', responseRoute);
 
 
   app.get('/health', (_, res: Response)=>{

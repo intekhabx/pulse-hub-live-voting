@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
-import responseService from "../../../services/responseService";
-import type { IDashboard } from '../assets/types';
-import { MOCK_POLLS, RECENT_ACTIVITY } from "../assets/mockdata";
+import { useContext } from "react";
+import { RECENT_ACTIVITY } from "../assets/mockdata";
 import { StatCard } from "../StatCard";
 import { StatusBadge } from "../StatusBadge";
 import { ActivityIcon } from "../ActivityIcon";
 import { Icons } from "../Icons";
 import tokenStore from "../../../services/tokenStoreService";
+import { DataContext } from "../../../Context/ContextApi";
 
 // ── Overview Section ───────────────────────────────────────────────────────
 
@@ -16,17 +15,12 @@ interface OverviewSectionProps {
  
 export function OverviewSection({ setActive }: OverviewSectionProps) {
   const user = tokenStore.getUser();
-  const [dashboardData, setDashboardData] = useState<IDashboard>();
- 
-  const fetchDashboardData = async () => {
-    const res = await responseService.getDashboardData();
-    console.log(res);
-    setDashboardData(res.data);
-  };
- 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [dashboardData]);
+
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("DataContext must be used inside ContextApiProvider")
+  }
+  const {dashboardData} = context;
  
   return (
     <div className="space-y-6">
@@ -110,26 +104,32 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
             </button>
           </div>
           <div className="space-y-3">
-            {MOCK_POLLS.slice(0, 4).map((poll) => (
+            {dashboardData?.polls?.map((poll) => (
               <div
-                key={poll.id}
-                className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0"
+                key={poll._id}
+                className="text-gray-200 flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0"
               >
                 <div className="flex-1 min-w-0">
-                  <p
-                    className="text-sm font-medium text-gray-200 truncate"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {poll.title}
-                  </p>
-                  <p
-                    className="text-xs text-gray-600 mt-0.5"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {poll.responses} responses · {poll.questions} questions
-                  </p>
+                  <div>
+                    <p
+                      className="text-sm font-medium text-gray-200 truncate"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {poll.title}
+                    </p>
+                    <p
+                      className="text-xs text-gray-600 mt-0.5"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {poll.description} 
+                      {/* · {poll.questions.length} questions */}
+                    </p>
+                  </div>
                 </div>
-                <StatusBadge status={poll.status} />
+                <div className="text-xs">
+                  {poll.createdAt.split("T")[0]}
+                </div>
+                <StatusBadge expiresAt={poll.expiresAt} />
               </div>
             ))}
           </div>

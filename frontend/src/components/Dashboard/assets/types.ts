@@ -1,11 +1,13 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface Poll {
-  id: string;
+  _id: string;
   title: string;
-  status: "active" | "expired" | "draft";
-  responses: number;
-  questions: number;
+  // status: "active" | "expired" | "draft";
+  // responses: number;
+  questions: [];
+  description: string;
+  createdAt: string;
   expiresAt: string;
   isPublished: boolean;
   allowAnonymous: boolean;
@@ -24,7 +26,7 @@ export interface IDashboard {
   totalResponses: string;
   activePolls: string;
   publishedResult: string;
-  polls: [];
+  polls: [Poll];
 }
 
 export interface Question {

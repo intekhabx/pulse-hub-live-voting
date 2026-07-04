@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { MOCK_POLLS } from "./assets/mockdata";
-import { StatusBadge } from "./StatusBadge";
-import { Icons } from "./Icons";
+import { useContext, useState } from "react";
+import { StatusBadge } from "../StatusBadge";
+import { Icons } from "../Icons";
+import { DataContext } from "../../../Context/ContextApi";
+import { getPollStatus } from "../../../utils/getPollStatus";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -12,9 +13,18 @@ interface PollsSectionProps {
 type FilterType = "all" | "active" | "expired" | "draft";
  
 export function PollsSection({ setActive }: PollsSectionProps) {
+  
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("DataContext must be used inside ContextApiProvider ")
+  }
+  const {dashboardData} = context;
+
+  
   const [filter, setFilter] = useState<FilterType>("all");
-  const filtered = filter === "all" ? MOCK_POLLS : MOCK_POLLS.filter((p) => p.status === filter);
- 
+  const filtered = filter === "all" ? dashboardData?.polls : dashboardData?.polls.filter((p) => getPollStatus(p.expiresAt) === filter);
+  
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -72,9 +82,9 @@ export function PollsSection({ setActive }: PollsSectionProps) {
             </div>
           ))}
         </div>
-        {filtered.map((poll) => (
+        {filtered?.map((poll) => (
           <div
-            key={poll.id}
+            key={poll._id}
             className="grid grid-cols-12 gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors group"
           >
             <div className="col-span-4">
@@ -88,19 +98,19 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                 className="text-xs text-gray-600 mt-0.5"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                {poll.questions} questions · {poll.allowAnonymous ? "Anonymous" : "Authenticated"}
+                {poll.questions.length} questions · {poll.allowAnonymous ? "Anonymous" : "Authenticated"}
                 {poll.isPublished && <span className="ml-2 text-emerald-500">· Published</span>}
               </p>
             </div>
             <div className="col-span-2 flex items-center">
-              <StatusBadge status={poll.status} />
+              <StatusBadge expiresAt={poll.expiresAt} />
             </div>
             <div className="col-span-2 flex items-center">
               <span
                 className="text-sm font-semibold text-gray-300"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                {poll.responses}
+                000
               </span>
             </div>
             <div className="col-span-2 flex items-center">
