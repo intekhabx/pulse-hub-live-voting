@@ -1,4 +1,4 @@
-import tokenStore from "../../services/tokenStoreService";
+import tokenStore from "../../../services/tokenStoreService";
 
 
 export function SettingsSection() {

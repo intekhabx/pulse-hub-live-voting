@@ -1,3 +1,5 @@
+import { useNavigate } from "@tanstack/react-router";
+import authService from "../../services/authService";
 import tokenStore from "../../services/tokenStoreService";
 import { Icons } from "./Icons";
 
@@ -18,6 +20,12 @@ const sectionLabels: Record<string, string> = {
 
 export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
   const user = tokenStore.getUser();
+  const navigate = useNavigate();
+
+  const handleLogout = async()=>{
+    await authService.logout();
+    navigate({ to: "/"});
+  }
 
   return (
     <header
@@ -82,7 +90,9 @@ export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
               Pro Plan
             </div>
           </div>
-          <button className="text-gray-600 hover:text-rose-400 transition-colors ml-1" title="Logout">
+          <button 
+          onClick={handleLogout}
+          className="text-gray-600 hover:text-rose-400 transition-colors ml-1" title="Logout">
             {Icons.logout}
           </button>
         </div>

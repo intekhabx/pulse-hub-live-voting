@@ -35,7 +35,12 @@ const pollService = {
   async getPollAnalytics(pollId: string){
     const {data} = await api.get(`/api/polls/get-poll-analytics/${pollId}`);
     return data;
-  }
+  },
+
+  async submitVote(pollId: string, answers: any[]){
+    const {data} = await api.post(`/api/polls/submit-vote/${pollId}`, {answers});
+    return data;
+  },
   
 }
 

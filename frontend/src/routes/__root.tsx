@@ -3,16 +3,24 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
 function RootLayout() {
-  const pathname = useRouterState({ select: s => s.location.pathname })
-  const isAuthPage = ['/login', '/register', '/dashboard'].includes(pathname)
+  const pathname = useRouterState({
+    select: s => s.location.pathname,
+  })
+
+  // dashboard pe hide (optional)
+  const hideLayout = pathname.startsWith('/dashboard')
 
   return (
     <>
-      {!isAuthPage && <Navbar />}
+      {!hideLayout && <Navbar />}
+
       <Outlet />
-      {!isAuthPage && <Footer />}
+
+      {!hideLayout && <Footer />}
     </>
   )
 }
 
-export const Route = createRootRoute({ component: RootLayout })
+export const Route = createRootRoute({
+  component: RootLayout,
+})

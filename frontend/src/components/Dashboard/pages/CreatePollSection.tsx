@@ -12,9 +12,29 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
     { questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }
   ]);
 
+  const [isCreated, setIsCreated] = useState(false);
+  // const [createdPollId, setCreatedPollId] = useState("");
+
   const handleSubmit = async ()=>{
-    const res = await pollService.createPoll({title, description, allowAnonymous, expiresAt, questions});
-    console.log(res);
+    try {
+      const res = await pollService.createPoll({title, description, allowAnonymous, expiresAt, questions});
+      console.log(res);
+      // setCreatedPollId(res.data.pollId);
+      const link = `${window.location.origin}/poll/${res.data.pollId}`;
+      console.log(link);
+      setIsCreated(true);
+    } 
+    catch (error) {
+      console.error(error);
+    }
+    finally{
+      setTitle("");
+      setDescription("");
+      setAllowAnonymous(true);
+      setExpiresAt("");
+      setQuestions([{ questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }]);
+      setTimeout(() => {setIsCreated(false)}, 2000);
+    }
   }
 
   const addQuestion = () => setQuestions(q => [...q, { questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }]);
@@ -120,13 +140,32 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
 
       {/* Submit */}
       <div className="flex gap-3">
-        <button className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        <button 
+        onClick={handleSubmit}
+        className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Create & Share Poll
         </button>
-        <button onClick={handleSubmit} className="px-6 py-3 rounded-xl text-sm font-semibold text-gray-400 border border-white/[0.08] hover:bg-white/[0.04] transition-all" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        <button 
+        onClick={()=> setActive("overview")}
+        className="px-6 py-3 rounded-xl text-sm font-semibold text-gray-400 border border-white/[0.08] hover:bg-white/[0.04] transition-all" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Cancel
         </button>
+
       </div>
+        {/* show message */}
+        {isCreated && 
+          <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-bold">
+              ✓
+            </div>
+            <p
+              className="text-sm text-emerald-300 font-medium"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Poll created successfully.
+            </p>
+          </div>
+        }
     </div>
   );
 }
