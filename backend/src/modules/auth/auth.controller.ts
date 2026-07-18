@@ -50,7 +50,8 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000 //7days
   })
 
@@ -72,7 +73,8 @@ export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
   });
 
   ApiResponse.ok(res, "user logged-out successfully")
@@ -105,12 +107,13 @@ export const renewToken = asyncHandler(async (req: Request, res: Response, next:
   user.refreshToken = newHashedRefreshToken;
   await user.save({validateBeforeSave: false});
 
-  res.cookie("refreshToken", refreshToken, {
+  res.cookie("refreshToken", newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000 //7days
   })
 
-  ApiResponse.ok(res, "token refreshed successfully", {acessToken: newAccessToken})
+  ApiResponse.ok(res, "token refreshed successfully", {accessToken: newAccessToken})
 })

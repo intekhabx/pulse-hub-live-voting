@@ -24,6 +24,13 @@ async function main(){
     io.on("connection", (socket)=>{
       console.log("a socket is connected", socket.id);
 
+
+      socket.on("from-client", (data)=> {
+        console.log(JSON.parse(data));
+        socket.emit("from-server", "i am a server emitting response");
+      })
+
+
       socket.on("disconnect", ()=>{
         console.log("disconnected one socket", socket.id)
       })

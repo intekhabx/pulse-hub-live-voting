@@ -6,6 +6,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const api = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json"
   }
@@ -16,6 +17,7 @@ export const api = axios.create({
 api.interceptors.request.use((config)=>{
   const token = tokenStore.getAccessToken();
   if(token){
+    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -33,25 +35,40 @@ api.interceptors.response.use(
   // Error callback
   async (error) => {
     const originalRequest = error.config;
+    const url = originalRequest.url || '';
 
-    // ✅ ye add karo
-    const isAuthRoute = originalRequest.url?.includes('/auth/login') || 
-                        originalRequest.url?.includes('/auth/register')
+    const isAuthRoute = url.includes('/auth/login') || 
+                        url.includes('/auth/register') ||
+                        url.includes('/auth/refresh-token');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {  // ✅ !isAuthRoute add kiya
+    // Only retry on 401, not on other errors
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
+      console.log('🔄 Token expired, attempting refresh...');
 
       try {
-        const response = await axios.post(`${BASE_URL}/api/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+        const refreshResponse = await api.post('/api/auth/refresh-token', {}, { withCredentials: true });
 
-        const { accessToken } = response.data;
-        tokenStore.set(accessToken);
-        return api(originalRequest);
+        console.log('📩 Refresh response:', refreshResponse.data);
+
+        if (refreshResponse.data?.data?.accessToken) {
+          const newToken = refreshResponse.data.data.accessToken;
+          console.log('✅ New token received');
+          tokenStore.set(newToken);
+          originalRequest.headers = originalRequest.headers ?? {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          originalRequest.withCredentials = true;
+          console.log('🔁 Retrying original request...');
+          return api(originalRequest);
+        } 
+        else {
+          console.error('❌ No token in refresh response');
+          tokenStore.clear();
+          throw new Error('No token in refresh response');
+        }
       } 
-      catch (err) {
+      catch (err: any) {
+        console.error('❌ Token refresh failed:', err?.message);
         tokenStore.clear();
         return Promise.reject(err);
       }

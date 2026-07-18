@@ -3,9 +3,10 @@ import ApiError from "../../utils/api-error.utils";
 import { verifyAccessToken, type AccessTokenPayload } from "../../utils/jwt-token.utils";
 import userModel from "./auth.model";
 import type { AuthRequest } from "../../types/index.types";
+import asyncHandler from "../../utils/async-handler.middleware";
 
 
-export const isLoggedIn = async (req: AuthRequest , res: Response, next: NextFunction): Promise<void>=>{
+export const isLoggedIn = asyncHandler(async (req: AuthRequest , res: Response, next: NextFunction): Promise<void>=>{
   const authHeader = req.headers?.authorization;
   if(!authHeader) throw ApiError.unAuthorized("authorization header missing")
 
@@ -26,4 +27,4 @@ export const isLoggedIn = async (req: AuthRequest , res: Response, next: NextFun
     role: user.role
   }
   next();
-}
+})

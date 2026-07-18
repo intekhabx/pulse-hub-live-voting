@@ -29,7 +29,17 @@ export const verifyAccessToken = (token: string)=>{
   if(!accessSecret){
     throw ApiError.unAuthorized("ACCESS TOKEN is invalid or missing");
   }
-  return jwt.verify(token, accessSecret);
+  try {
+    return jwt.verify(token, accessSecret);
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      throw ApiError.unAuthorized("Access token expired");
+    } else if (error.name === 'JsonWebTokenError') {
+      throw ApiError.unAuthorized("Invalid access token");
+    } else {
+      throw ApiError.unAuthorized("Token verification failed");
+    }
+  }
 }
 
 
@@ -48,5 +58,15 @@ export const verifyRefreshToken = (token: string)=>{
   if(!refreshSecret){
     throw ApiError.unAuthorized("REFRESH TOKEN is invalid or missing");
   }
-  return jwt.verify(token, refreshSecret);
+  try {
+    return jwt.verify(token, refreshSecret);
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      throw ApiError.unAuthorized("Refresh token expired");
+    } else if (error.name === 'JsonWebTokenError') {
+      throw ApiError.unAuthorized("Invalid refresh token");
+    } else {
+      throw ApiError.unAuthorized("Token verification failed");
+    }
+  }
 }
