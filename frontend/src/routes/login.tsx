@@ -4,11 +4,16 @@ import tokenStore from '../services/tokenStoreService';
 
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: () => {
+
+  validateSearch: (search)=> ({
+    next: search.next as string | undefined,
+  }),
+
+  beforeLoad: ({search}) => {
     const accessToken = tokenStore.getAccessToken();
 
     if (accessToken) {
-      throw redirect({ to: '/dashboard' });
+      throw redirect({ to: search.next || '/dashboard' });
     }
   },
 

@@ -5,12 +5,17 @@ export interface Poll {
   title: string;
   // status: "active" | "expired" | "draft";
   // responses: number;
-  questions: [];
+  questions: [Question];
   description: string;
   createdAt: string;
   expiresAt: string;
   isPublished: boolean;
   allowAnonymous: boolean;
+}
+
+export interface IPollResponse {
+  pollId: string;
+  totalResponse: number;
 }
 
 export interface ActivityItem {
@@ -30,7 +35,14 @@ export interface IDashboard {
 }
 
 export interface Question {
+  _id: string;
   questionText: string;
   required: boolean;
-  options: { optionText: string }[];
+  options: [Option];
+}
+
+export interface Option {
+  _id: string;
+  optionText: string;
+  votes: number;
 }

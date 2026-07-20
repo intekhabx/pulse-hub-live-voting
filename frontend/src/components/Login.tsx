@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import type { FormEvent } from "react";
 import { DataContext } from '../Context/ContextApi';
 import authService from '../services/authService';
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 
 
 
@@ -31,6 +31,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
+
+  const {next} = useSearch({from: "/login"});
+
   
     const validate = (): boolean => {
       const newErrors: FieldError = {};
@@ -64,7 +67,12 @@ export default function Login() {
         setSuccess(true);
         // redirect uset to dashboard
         setTimeout(() => {
-          navigate({to: "/dashboard"});
+          if (next) {
+            navigate({ to: next });
+          } 
+          else {
+            navigate({ to: "/dashboard" });
+          }
         }, 2000);
       } 
       catch (err: any) {
@@ -356,7 +364,7 @@ export default function Login() {
             >
               Don't have an account?{" "}
               <Link
-                to="/register"
+                to={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
                 className="text-violet-500 hover:text-violet-400 font-semibold transition-colors"
               >
                 Create one free

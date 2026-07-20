@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { DataContext } from '../Context/ContextApi';
 import authService from '../services/authService';
 
@@ -100,6 +100,8 @@ export function Register() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [serverError, setServerError] = useState("");
+
+    const {next} = useSearch({from: "/register"});
   
     const validate = (): boolean => {
       const e: FieldError = {};
@@ -139,7 +141,7 @@ export function Register() {
         setSuccess(true);
         // ✅ success ke baad login pe bhejo user ko
         setTimeout(() => {
-          navigate({ to: '/login' });
+          navigate({ to: next ? `/login?next=${encodeURIComponent(next)}` : '/login' });
         }, 2000);
       } 
       catch (err: any) {
@@ -466,7 +468,7 @@ export function Register() {
             <p className={`text-center text-sm mt-6 ${dark ? "text-gray-600" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
               Already have an account?{" "}
               <Link
-                to="/login"
+                to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
                 className="text-violet-500 hover:text-violet-400 font-semibold transition-colors"
               >
                 Sign in

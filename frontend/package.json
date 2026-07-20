@@ -16,6 +16,7 @@
     "dotenv": "^17.4.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-hot-toast": "^2.6.0",
     "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.3.0"
   },

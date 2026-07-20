@@ -17,7 +17,7 @@ export const api = axios.create({
 api.interceptors.request.use((config)=>{
   const token = tokenStore.getAccessToken();
   if(token){
-    config.headers = config.headers ?? {};
+    config.headers = config.headers ?? {} as any;
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -34,6 +34,13 @@ api.interceptors.response.use(
 
   // Error callback
   async (error) => {
+
+    // check user is stored in localstorage or not
+    const user = tokenStore.getUser();
+    if (!user) {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
     const url = originalRequest.url || '';
 
