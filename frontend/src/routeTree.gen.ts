@@ -10,19 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
-import { Route as PollRouteImport } from './routes/poll'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VotesPollIdRouteImport } from './routes/votes/$pollId'
+import { Route as PollPollIdRouteImport } from './routes/poll/$pollId'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PollRoute = PollRouteImport.update({
-  id: '/poll',
-  path: '/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -40,43 +36,76 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VotesPollIdRoute = VotesPollIdRouteImport.update({
+  id: '/votes/$pollId',
+  path: '/votes/$pollId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PollPollIdRoute = PollPollIdRouteImport.update({
+  id: '/poll/$pollId',
+  path: '/poll/$pollId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/poll': typeof PollRoute
   '/register': typeof RegisterRoute
+  '/poll/$pollId': typeof PollPollIdRoute
+  '/votes/$pollId': typeof VotesPollIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/poll': typeof PollRoute
   '/register': typeof RegisterRoute
+  '/poll/$pollId': typeof PollPollIdRoute
+  '/votes/$pollId': typeof VotesPollIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/poll': typeof PollRoute
   '/register': typeof RegisterRoute
+  '/poll/$pollId': typeof PollPollIdRoute
+  '/votes/$pollId': typeof VotesPollIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/poll' | '/register'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/register'
+    | '/poll/$pollId'
+    | '/votes/$pollId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/poll' | '/register'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/poll' | '/register'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/register'
+    | '/poll/$pollId'
+    | '/votes/$pollId'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/register'
+    | '/poll/$pollId'
+    | '/votes/$pollId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
-  PollRoute: typeof PollRoute
   RegisterRoute: typeof RegisterRoute
+  PollPollIdRoute: typeof PollPollIdRoute
+  VotesPollIdRoute: typeof VotesPollIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -86,13 +115,6 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/poll': {
-      id: '/poll'
-      path: '/poll'
-      fullPath: '/poll'
-      preLoaderRoute: typeof PollRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -116,6 +138,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/votes/$pollId': {
+      id: '/votes/$pollId'
+      path: '/votes/$pollId'
+      fullPath: '/votes/$pollId'
+      preLoaderRoute: typeof VotesPollIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/poll/$pollId': {
+      id: '/poll/$pollId'
+      path: '/poll/$pollId'
+      fullPath: '/poll/$pollId'
+      preLoaderRoute: typeof PollPollIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -123,8 +159,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
-  PollRoute: PollRoute,
   RegisterRoute: RegisterRoute,
+  PollPollIdRoute: PollPollIdRoute,
+  VotesPollIdRoute: VotesPollIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

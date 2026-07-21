@@ -9,7 +9,9 @@ const router = express.Router();
 router.post("/register", validate(registerDto), controller.register);
 router.post("/login", validate(loginDto), controller.login);
 router.post("/logout", isLoggedIn, controller.logout);
-router.post("/refresh-token", controller.renewToken)
+router.post("/refresh-token", controller.renewToken);
+
+router.get("/user-session", controller.getUserSession);
 
 
 export default router;

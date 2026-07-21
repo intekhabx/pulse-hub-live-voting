@@ -23,8 +23,14 @@ const responseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
+  anonymousId: {
+    type: String,
+  },
   answers: [
-    answerSchema
+    {
+      questionId: mongoose.Schema.Types.ObjectId,
+      optionId: mongoose.Schema.Types.ObjectId
+    }
   ],
   submittedAt: {
     type: Date,

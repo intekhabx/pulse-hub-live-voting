@@ -37,7 +37,7 @@ const pollService = {
     return data;
   },
 
-  async submitVote(pollId: string, answers: any[]){
+  async submitVote(pollId: string, answers: {questionId: string, optionId: string}[]){
     const {data} = await api.post(`/api/polls/submit-vote/${pollId}`, {answers});
     return data;
   },

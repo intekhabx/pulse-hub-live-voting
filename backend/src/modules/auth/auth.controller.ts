@@ -117,3 +117,36 @@ export const renewToken = asyncHandler(async (req: Request, res: Response, next:
 
   ApiResponse.ok(res, "token refreshed successfully", {accessToken: newAccessToken})
 })
+
+
+
+export const getUserSession = asyncHandler(async(req: AuthRequest, res: Response)=> {
+  // step:1 - extract cookie of the user
+  const anonymousId = req?.signedCookies?.anonymoudId;
+  const refreshToken = req?.cookies?.refreshToken;
+
+  // step:2 - if user cookie has refreshToken then user is already authenticated
+  if(refreshToken){
+    return ApiResponse.ok(res, "authenticated user");
+  }
+
+  // step:3 - if user has anonymousId then anonymous user has some id proof
+  if(anonymousId){
+    return ApiResponse.ok(res, "user has their anonymous id");
+  }
+
+  // step:4 - if user doesn't have anything then generate a randomId
+  const newAnonymousId = crypto.randomUUID();
+
+  // step:5 - add anonymoudId in httpOnly cookie with longed lived time
+  res.cookie("anonymousId", newAnonymousId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
+    maxAge: 1000 * 60 * 60 * 24 * 365, //1 year,
+    signed: true, //ye cookie me ek sign add krdeta h agar koi modify krke bhejega to signedCookie me pta chal jayega
+  })
+
+  ApiResponse.ok(res, "anonymousId generated and attached");
+})

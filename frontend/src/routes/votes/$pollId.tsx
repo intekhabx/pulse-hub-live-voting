@@ -5,6 +5,13 @@ import type { Poll } from '../../components/Dashboard/assets/types';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { router } from '../../App';
+import authService from '../../services/authService';
+
+
+interface IPollInputData {
+  questionId: string;
+  optionId: string;
+}
 
 
 export const Route = createFileRoute('/votes/$pollId')({
@@ -16,6 +23,28 @@ function RouteComponent() {
   const [loading, setLoading] = useState(false);
 
   const [pollData, setPollData] = useState<Poll | null>();
+
+
+  const [pollInputData, setPollInputData] = useState<IPollInputData[]>([]);
+
+  const handleSelect = (questionId: string, optionId: string) => {
+    setPollInputData((prev) => {
+      // find the index of the question if already selected
+      const index = prev?.findIndex((item)=> {
+        return item?.questionId === questionId
+      })
+
+      if (index !== -1) {
+        // Update existing answer
+        const updated = [...prev];
+        updated[index] = { questionId, optionId };
+        return updated;
+      }
+  
+      // Add new answer
+      return [...prev, { questionId, optionId }];
+    })
+  }
 
   useEffect(() => {
     async function getPollById(){
@@ -49,6 +78,8 @@ function RouteComponent() {
       const response = await pollService.submitVote(pollId, answers);
 
       console.log(response);
+      localStorage.removeItem("tempPollData");
+      setPollInputData([]);
       toast.success("poll submitted successfully");
     } 
     catch (err) {
@@ -74,6 +105,25 @@ function RouteComponent() {
       setLoading(false);
     }
   }
+
+  // getTempPollData to autofill the poll
+  useEffect(()=> {
+    const data = localStorage.getItem("tempPollData");
+    console.log("tempdata",data);
+    if(data){
+      setPollInputData(JSON.parse(data));
+    }
+  }, [])
+
+
+
+  // to get the anonymousId for the unauthorized user
+  useEffect(()=> {
+    async function addOrVerifyUserSession() {
+      await authService.getUserSession();
+    }
+    addOrVerifyUserSession();
+  }, [])
 
   return (
     <>
@@ -118,6 +168,8 @@ function RouteComponent() {
                         value={opt._id}
                         className="accent-blue-500"
                         required= {ques.required ? true : false}
+                        checked= {pollInputData?.find((item)=> item.questionId === ques._id)?.optionId === opt._id}
+                        onChange={()=> handleSelect(ques._id, opt._id)}
                       />
 
                       <span>{opt.optionText}</span>

@@ -1,7 +1,15 @@
 import { useState, useEffect, useContext } from "react";
 import { DataContext } from "../Context/ContextApi";
 import { Link } from "@tanstack/react-router";
+import tokenStore from "../services/tokenStoreService";
 
+
+interface IUser {
+  email: string;
+  name: string;
+  role: string;
+  userId: string;
+}
 
 
 export default function Navbar() {
@@ -11,6 +19,22 @@ export default function Navbar() {
     throw new Error("dark and toggleTheme must be used within ContextApiProvider");
   }
   const {dark, toggleTheme} = context;
+
+
+  const [user, setUser] = useState<IUser | null>(null);
+
+  useEffect(()=> {
+    const authenticateUser = ()=> {
+      const user = tokenStore.getUser();
+      const accessToken = tokenStore.getAccessToken();
+  
+      if(user && accessToken){
+        setUser(user);
+      }
+    }
+    authenticateUser();
+  }, [])
+
   
 
   const [scrolled, setScrolled] = useState(false);
@@ -106,25 +130,28 @@ export default function Navbar() {
           </button>
 
           {/* Sign In */}
-          <Link
-            to="/login"
-            className={`hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              dark
-                ? "text-gray-300 hover:text-white hover:bg-white/5 border border-white/10"
-                : "text-gray-600 hover:text-gray-900 hover:bg-black/5 border border-black/10"
-            }`}
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Sign In
-          </Link>
+          {
+            user ? "" :
+            <Link
+              to="/login"
+              className={`hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                dark
+                  ? "text-gray-300 hover:text-white hover:bg-white/5 border border-white/10"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-black/5 border border-black/10"
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Sign In
+            </Link>
+          }
 
           {/* Get Started */}
           <Link
-            to="/register"
+            to={user ? "/dashboard" : "/register"}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            Get Started
+            {user ? "Go to Dashboard" : "Get Started"}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -170,13 +197,16 @@ export default function Navbar() {
               {link}
             </a>
           ))}
-          <a
-            href="#signin"
-            className={`text-sm font-semibold py-1.5 ${dark ? "text-gray-300" : "text-gray-700"}`}
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Sign In
-          </a>
+          {
+            user ? "" :
+            <Link
+              to="/login"
+              className={`text-sm font-semibold py-1.5 ${dark ? "text-gray-300" : "text-gray-700"}`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Sign In
+            </Link>
+          }
         </div>
       </div>
 

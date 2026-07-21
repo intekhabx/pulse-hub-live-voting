@@ -1,8 +1,10 @@
-import { useContext, useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBadge } from "../StatusBadge";
 import { Icons } from "../Icons";
-import { DataContext } from "../../../Context/ContextApi";
 import { getPollStatus } from "../../../utils/getPollStatus";
+import { useNavigate } from "@tanstack/react-router";
+import pollService from "../../../services/pollService";
+import type { IPollResponse, Poll } from "../assets/types";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -13,17 +15,42 @@ interface PollsSectionProps {
 type FilterType = "all" | "active" | "expired" | "draft";
  
 export function PollsSection({ setActive }: PollsSectionProps) {
-  
-  const context = useContext(DataContext);
-  if(!context){
-    throw new Error("DataContext must be used inside ContextApiProvider ")
-  }
-  const {dashboardData} = context;
 
+  const [polls, setPolls] = useState<Poll[]>();
+  const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>();
   
-  const [filter, setFilter] = useState<FilterType>("all");
-  const filtered = filter === "all" ? dashboardData?.polls : dashboardData?.polls.filter((p) => getPollStatus(p.expiresAt) === filter);
+  const [filter, setFilter] = useState<FilterType>("all");  
+  const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
+
+  const getMyPolls = async() => {
+    const res = await pollService.getMyPolls();
+    const {polls, pollResponse} = res.data;
+    // console.log(polls, pollResponse);
+    setPolls(polls);
+    setTotalPollResponse(pollResponse);
+  }
+
+  useEffect(()=> {
+    getMyPolls();
+  }, [])
   
+
+
+  const navigate = useNavigate();
+
+  const openPollPage = async (pollId: string) => {
+    navigate({
+      to: '/poll/$pollId',
+      params: { pollId },
+    })
+  }
+
+
+  const copyPollLink = (pollId: string) => {
+    navigator.clipboard.writeText(`${import.meta.env.VITE_BASE_URL}/votes/${pollId}`);
+    alert("copied...");
+  }
+
 
   return (
     <div className="space-y-5">
@@ -82,7 +109,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
             </div>
           ))}
         </div>
-        {filtered?.map((poll) => (
+        {filtered?.map((poll, idx) => (
           <div
             key={poll._id}
             className="grid grid-cols-12 gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors group"
@@ -110,7 +137,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                 className="text-sm font-semibold text-gray-300"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                000
+                {totalPollResponse?.[idx].totalResponse || "00"}
               </span>
             </div>
             <div className="col-span-2 flex items-center">
@@ -127,12 +154,14 @@ export function PollsSection({ setActive }: PollsSectionProps) {
             </div>
             <div className="col-span-2 flex items-center justify-end gap-2">
               <button
+                onClick={()=> openPollPage(poll._id)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
                 title="View"
               >
                 {Icons.eye}
               </button>
               <button
+                onClick={()=> copyPollLink(poll._id)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
                 title="Copy link"
               >

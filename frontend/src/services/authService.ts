@@ -32,6 +32,12 @@ const authService = {
         await api.post("/api/auth/logout")
         tokenStore.clear()
     },
+
+    async getUserSession(){
+      const res = await api.get("/api/auth/user-session");
+      return res;
+    },
+
 }
 
 export default authService;

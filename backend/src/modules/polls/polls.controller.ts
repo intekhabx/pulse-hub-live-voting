@@ -93,15 +93,36 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     }
   }
 
-  // step:5 - store response in DB; if user is logged in then it came here if anonymous is allowed then also
-  console.log(user?._id)
-  await responseModel.create({
-    pollId: poll._id,
-    userId: user?._id,
-    answers
-  })
+  // step:6 - check user is already submitted thier vote or not
+  let alreadyVoted;
+  if(user){
+    alreadyVoted = await responseModel.findOne({userId: user?._id, pollId: poll._id});
+  }
+  else{
+    alreadyVoted = await responseModel.findOne({anonymousId: req?.signedCookies?.anonymousId, pollId: poll._id})
+  }
 
-  // step:6 - update votes count in poll votes //extra
+  if(alreadyVoted){
+    throw ApiError.conflict("you already submitted your vote");
+  }
+
+  // step:7 - store response in DB
+  if(user){
+    await responseModel.create({
+      pollId: poll._id,
+      userId: user?._id,
+      answers
+    })
+  }
+  else{
+    await responseModel.create({
+      pollId: poll._id,
+      anonymousId: req?.signedCookies?.anonymousId,
+      answers
+    })
+  }
+
+  // step:8 - update votes count in poll votes //extra
   answers.forEach((ans:any) => {
     // poll.questions.id() --> ye v internally find() ka hi use krta h
     const question = poll.questions.id(ans.questionId);
