@@ -14,7 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VotesPollIdRouteImport } from './routes/votes/$pollId'
-import { Route as PollPollIdRouteImport } from './routes/poll/$pollId'
+import { Route as DashboardPollPollIdRouteImport } from './routes/dashboard/poll/$pollId'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -41,36 +41,36 @@ const VotesPollIdRoute = VotesPollIdRouteImport.update({
   path: '/votes/$pollId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PollPollIdRoute = PollPollIdRouteImport.update({
+const DashboardPollPollIdRoute = DashboardPollPollIdRouteImport.update({
   id: '/poll/$pollId',
   path: '/poll/$pollId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => DashboardRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/poll/$pollId': typeof PollPollIdRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/poll/$pollId': typeof PollPollIdRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/poll/$pollId': typeof PollPollIdRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,32 +79,31 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/register'
-    | '/poll/$pollId'
     | '/votes/$pollId'
+    | '/dashboard/poll/$pollId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/login'
     | '/register'
-    | '/poll/$pollId'
     | '/votes/$pollId'
+    | '/dashboard/poll/$pollId'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
     | '/register'
-    | '/poll/$pollId'
     | '/votes/$pollId'
+    | '/dashboard/poll/$pollId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
-  PollPollIdRoute: typeof PollPollIdRoute
   VotesPollIdRoute: typeof VotesPollIdRoute
 }
 
@@ -145,22 +144,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VotesPollIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/poll/$pollId': {
-      id: '/poll/$pollId'
+    '/dashboard/poll/$pollId': {
+      id: '/dashboard/poll/$pollId'
       path: '/poll/$pollId'
-      fullPath: '/poll/$pollId'
-      preLoaderRoute: typeof PollPollIdRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/dashboard/poll/$pollId'
+      preLoaderRoute: typeof DashboardPollPollIdRouteImport
+      parentRoute: typeof DashboardRoute
     }
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardPollPollIdRoute: typeof DashboardPollPollIdRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardPollPollIdRoute: DashboardPollPollIdRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
-  PollPollIdRoute: PollPollIdRoute,
   VotesPollIdRoute: VotesPollIdRoute,
 }
 export const routeTree = rootRouteImport

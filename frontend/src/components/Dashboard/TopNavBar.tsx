@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import authService from "../../services/authService";
 import tokenStore from "../../services/tokenStoreService";
 import { Icons } from "./Icons";
@@ -21,10 +22,18 @@ const sectionLabels: Record<string, string> = {
 export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
   const user = tokenStore.getUser();
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async()=>{
-    await authService.logout();
-    navigate({ to: "/"});
+    setIsLoggingOut(true);
+    try {
+      await authService.logout();
+      localStorage.removeItem("dashboard-section");
+      localStorage.removeItem("pulsehub-dashboard-section");
+      navigate({ to: "/"});
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -72,7 +81,7 @@ export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
         </button>
 
         {/* Profile */}
-        <div className="flex items-center gap-2.5 pl-3 border-l border-white/[0.07] cursor-pointer group">
+        <div className="flex items-center gap-2.5 pl-3 border-l border-white/[0.07] group">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-violet-500/20">
             {user?.name[0]}
           </div>
@@ -92,8 +101,9 @@ export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
           </div>
           <button 
           onClick={handleLogout}
-          className="text-gray-600 hover:text-rose-400 transition-colors ml-1" title="Logout">
-            {Icons.logout}
+          disabled={isLoggingOut}
+          className="text-gray-600 hover:text-rose-400 transition-colors ml-1 cursor-pointer disabled:cursor-not-allowed" title="Logout">
+            {isLoggingOut ? <svg className="animate-spin" width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg> : Icons.logout}
           </button>
         </div>
       </div>

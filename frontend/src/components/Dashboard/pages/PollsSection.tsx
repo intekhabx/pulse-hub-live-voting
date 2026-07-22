@@ -5,6 +5,7 @@ import { getPollStatus } from "../../../utils/getPollStatus";
 import { useNavigate } from "@tanstack/react-router";
 import pollService from "../../../services/pollService";
 import type { IPollResponse, Poll } from "../assets/types";
+import { Loader } from "../../Loader";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -18,17 +19,22 @@ export function PollsSection({ setActive }: PollsSectionProps) {
 
   const [polls, setPolls] = useState<Poll[]>();
   const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>();
+  const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [filter, setFilter] = useState<FilterType>("all");  
   const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
   const filteredPollResponse = filter === "all" ? totalPollResponse : totalPollResponse?.filter((r) => getPollStatus(r.expiresAt) === filter);
 
   const getMyPolls = async() => {
-    const res = await pollService.getMyPolls();
-    const {polls, pollResponse} = res.data;
-    // console.log(polls, pollResponse);
-    setPolls(polls);
-    setTotalPollResponse(pollResponse);
+    try {
+      const res = await pollService.getMyPolls();
+      const {polls, pollResponse} = res.data;
+      setPolls(polls);
+      setTotalPollResponse(pollResponse);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(()=> {
@@ -36,17 +42,13 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   }, [])
   
 
-  useEffect(()=> {
-    // io.on("server_pollsubmit",)
-  }, [])
-
 
 
   const navigate = useNavigate();
 
   const openPollPage = async (pollId: string) => {
     navigate({
-      to: '/poll/$pollId',
+      to: '/dashboard/poll/$pollId',
       params: { pollId },
     })
   }
@@ -54,7 +56,8 @@ export function PollsSection({ setActive }: PollsSectionProps) {
 
   const copyPollLink = (pollId: string) => {
     navigator.clipboard.writeText(`${import.meta.env.VITE_BASE_URL}/votes/${pollId}`);
-    alert("copied...");
+    setCopiedPollId(pollId);
+    setTimeout(() => setCopiedPollId(null), 1800);
   }
 
 
@@ -78,6 +81,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
         </button>
       </div>
  
+      {isLoading ? <Loader label="Loading your polls…" className="min-h-[20rem]" /> : <>
       {/* Filter tabs */}
       <div className="flex items-center gap-2 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] w-fit">
         {(["all", "active", "expired", "draft"] as const).map((f) => (
@@ -168,10 +172,16 @@ export function PollsSection({ setActive }: PollsSectionProps) {
               </button>
               <button
                 onClick={()=> copyPollLink(poll._id)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                title="Copy link"
+                className={`h-7 rounded-lg flex items-center justify-center transition-colors ${
+                  copiedPollId === poll._id
+                    ? "w-auto px-2 text-cyan-400 bg-cyan-500/10"
+                    : "w-7 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10"
+                }`}
+                title={copiedPollId === poll._id ? "Copied" : "Copy link"}
               >
-                {Icons.link}
+                {copiedPollId === poll._id ? (
+                  <span className="text-[11px] font-semibold" style={{ fontFamily: "'DM Sans', sans-serif" }}>Copied</span>
+                ) : Icons.link}
               </button>
               <button
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
@@ -183,6 +193,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
           </div>
         ))}
       </div>
+      </>}
     </div>
   );
 }

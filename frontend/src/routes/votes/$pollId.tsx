@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { router } from '../../App';
 import authService from '../../services/authService';
 import { DataContext } from '../../Context/ContextApi';
+import { Loader } from '../../components/Loader';
 import { StatusBadge } from '../../components/Dashboard/StatusBadge';
 
 
@@ -30,6 +31,7 @@ function RouteComponent() {
   const { dark } = context;
 
   const [loading, setLoading] = useState(false);
+  const [pollLoading, setPollLoading] = useState(true);
 
   const [pollData, setPollData] = useState<Poll | null>();
 
@@ -57,9 +59,12 @@ function RouteComponent() {
 
   useEffect(() => {
     async function getPollById(){
-      const result = await pollService.getPollById(pollId);
-      // console.log(result);
-      setPollData(result.data);
+      try {
+        const result = await pollService.getPollById(pollId);
+        setPollData(result.data);
+      } finally {
+        setPollLoading(false);
+      }
     }
     getPollById();
   }, []);
@@ -84,9 +89,7 @@ function RouteComponent() {
     }
 
     try {
-      const response = await pollService.submitVote(pollId, answers);
-
-      console.log(response);
+      await pollService.submitVote(pollId, answers);
       localStorage.removeItem("tempPollData");
       setPollInputData([]);
       toast.success("poll submitted successfully");
@@ -161,7 +164,7 @@ function RouteComponent() {
           </span>
         </div>
 
-        <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
+        {pollLoading ? <Loader label="Loading poll…" className="min-h-[28rem]" /> : <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
           <div className={`border-b bg-gradient-to-r from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08] px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
             <div className={`mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
               <StatusBadge expiresAt={pollData ? pollData?.expiresAt : ""} />
@@ -234,7 +237,7 @@ function RouteComponent() {
               className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              {loading ? "Submitting..." : "Submit Vote"}
+              {loading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg> Submitting…</> : "Submit Vote"}
               {!loading && (
                 <svg className="transition-transform duration-200 group-hover:translate-x-1" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -242,7 +245,7 @@ function RouteComponent() {
               )}
             </button>
           </form>
-        </div>
+        </div>}
         <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Your response is securely recorded by PulseHub.
         </p>

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { DataContext } from "../Context/ContextApi";
 import { Sidebar } from "./Dashboard/Sidebar";
 import { TopNavbar } from "./Dashboard/TopNavBar";
 import { OverviewSection } from "./Dashboard/pages/OverviewSection";
@@ -6,22 +8,40 @@ import { PollsSection } from "./Dashboard/pages/PollsSection";
 import { AnalyticsSection } from "./Dashboard/pages/AnalyticsSection";
 import { CreatePollSection } from "./Dashboard/pages/CreatePollSection";
 import { SettingsSection } from "./Dashboard/pages/SettingSection";
+import { PollDetailsSection } from "./Dashboard/pages/PollDetailsSection";
 
 
 
 
 
-export default function Dashboard() {
+interface DashboardProps {
+  pollId?: string;
+}
+
+export default function Dashboard({ pollId }: DashboardProps) {
+  const navigate = useNavigate();
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error("Dashboard must be used within ContextApiProvider");
+  }
+  const { refreshDashboardData } = context;
   const dashboardSections = ["overview", "polls", "analytics", "create", "settings"];
   const [activeSection, setActiveSection] = useState(() => {
-    const savedSection = localStorage.getItem("pulsehub-dashboard-section");
+    const savedSection = localStorage.getItem("dashboard-section");
     return savedSection && dashboardSections.includes(savedSection) ? savedSection : "overview";
   });
   const [collapsed, setCollapsed] = useState(false);
 
+  useEffect(() => {
+    refreshDashboardData();
+  }, [refreshDashboardData]);
+
   const handleSetActiveSection = (section: string) => {
     setActiveSection(section);
-    localStorage.setItem("pulsehub-dashboard-section", section);
+    localStorage.setItem("dashboard-section", section);
+    if (pollId) {
+      navigate({ to: "/dashboard" });
+    }
   };
 
   const renderSection = () => {
@@ -39,10 +59,12 @@ export default function Dashboard() {
     }
   };
 
+  const displayedSection = pollId ? "polls" : activeSection;
+
   return (
     <div className="min-h-screen bg-[#0a0a12]">
       <Sidebar
-        active={activeSection}
+        active={displayedSection}
         setActive={handleSetActiveSection}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -50,12 +72,12 @@ export default function Dashboard() {
 
       <TopNavbar
         collapsed={collapsed}
-        activeSection={activeSection}
+        activeSection={displayedSection}
       />
 
       <main className={`pt-16 ${collapsed ? "ml-16" : "ml-56"}`}>
         <div className="p-6">
-          {renderSection()}
+          {pollId ? <PollDetailsSection pollId={pollId} /> : renderSection()}
         </div>
       </main>
     </div>

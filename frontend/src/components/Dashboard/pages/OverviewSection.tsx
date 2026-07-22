@@ -6,6 +6,7 @@ import { ActivityIcon } from "../ActivityIcon";
 import { Icons } from "../Icons";
 import tokenStore from "../../../services/tokenStoreService";
 import { DataContext } from "../../../Context/ContextApi";
+import { Loader } from "../../Loader";
 
 // ── Overview Section ───────────────────────────────────────────────────────
 
@@ -20,7 +21,11 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
   if(!context){
     throw new Error("DataContext must be used inside ContextApiProvider")
   }
-  const {dashboardData} = context;
+  const {dashboardData, dashboardLoading} = context;
+
+  if (dashboardLoading) {
+    return <Loader label="Loading dashboard…" className="min-h-[28rem]" />;
+  }
  
   return (
     <div className="space-y-6">

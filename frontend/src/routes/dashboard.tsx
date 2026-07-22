@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import Dashboard from '../components/Dashboard'
 import tokenStore from '../services/tokenStoreService';
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function RouteComponent() {
-  return <div>
-    <Dashboard />
-  </div>
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  return pathname === "/dashboard" ? <Dashboard /> : <Outlet />;
 }

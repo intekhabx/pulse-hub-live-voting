@@ -13,9 +13,11 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
   ]);
 
   const [isCreated, setIsCreated] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   // const [createdPollId, setCreatedPollId] = useState("");
 
   const handleSubmit = async ()=>{
+    setIsCreating(true);
     try {
       const res = await pollService.createPoll({title, description, allowAnonymous, expiresAt, questions});
       console.log(res);
@@ -28,6 +30,7 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
       console.error(error);
     }
     finally{
+      setIsCreating(false);
       setTitle("");
       setDescription("");
       setAllowAnonymous(true);
@@ -142,8 +145,9 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
       <div className="flex gap-3">
         <button 
         onClick={handleSubmit}
-        className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          Create & Share Poll
+        disabled={isCreating}
+        className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          {isCreating ? <><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg> Creating poll…</> : "Create & Share Poll"}
         </button>
         <button 
         onClick={()=> setActive("overview")}
