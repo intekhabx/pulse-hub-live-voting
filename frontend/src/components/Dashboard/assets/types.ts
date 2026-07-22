@@ -16,6 +16,7 @@ export interface Poll {
 export interface IPollResponse {
   pollId: string;
   totalResponse: number;
+  expiresAt: string;
 }
 
 export interface ActivityItem {

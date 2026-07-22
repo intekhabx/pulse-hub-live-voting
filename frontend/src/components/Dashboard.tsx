@@ -12,19 +12,28 @@ import { SettingsSection } from "./Dashboard/pages/SettingSection";
 
 
 export default function Dashboard() {
-  const [activeSection, setActiveSection] = useState("overview");
+  const dashboardSections = ["overview", "polls", "analytics", "create", "settings"];
+  const [activeSection, setActiveSection] = useState(() => {
+    const savedSection = localStorage.getItem("pulsehub-dashboard-section");
+    return savedSection && dashboardSections.includes(savedSection) ? savedSection : "overview";
+  });
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleSetActiveSection = (section: string) => {
+    setActiveSection(section);
+    localStorage.setItem("pulsehub-dashboard-section", section);
+  };
 
   const renderSection = () => {
     switch (activeSection) {
       case "overview":
-        return <OverviewSection setActive={setActiveSection} />;
+        return <OverviewSection setActive={handleSetActiveSection} />;
       case "polls":
-        return <PollsSection setActive={setActiveSection} />;
+        return <PollsSection setActive={handleSetActiveSection} />;
       case "analytics":
         return <AnalyticsSection />;
       case "create":
-        return <CreatePollSection setActive={setActiveSection} />;
+        return <CreatePollSection setActive={handleSetActiveSection} />;
       case "settings":
         return <SettingsSection />;
     }
@@ -34,7 +43,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#0a0a12]">
       <Sidebar
         active={activeSection}
-        setActive={setActiveSection}
+        setActive={handleSetActiveSection}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
       />

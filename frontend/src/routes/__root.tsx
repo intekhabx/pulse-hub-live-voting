@@ -9,10 +9,11 @@ function RootLayout() {
 
   // dashboard pe hide (optional)
   const hideLayout = pathname.startsWith('/dashboard')
+  const isVotePage = pathname.startsWith('/votes/')
 
   return (
     <>
-      {!hideLayout && <Navbar />}
+      {!hideLayout && <Navbar hideNavigationLinks={isVotePage} />}
 
       <Outlet />
 

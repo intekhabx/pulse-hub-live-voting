@@ -12,7 +12,11 @@ interface IUser {
 }
 
 
-export default function Navbar() {
+interface NavbarProps {
+  hideNavigationLinks?: boolean;
+}
+
+export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
 
   const context = useContext(DataContext);
   if(!context){
@@ -88,21 +92,23 @@ export default function Navbar() {
         </a>
 
         {/* ── Desktop Nav Links ── */}
-        <ul className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <li key={link}>
-              <a
-                href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`text-sm font-medium tracking-wide transition-colors duration-200 hover:text-violet-500 ${
-                  dark ? "text-gray-400" : "text-gray-500"
-                }`}
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {link}
-              </a>
-            </li>
-          ))}
-        </ul>
+        {!hideNavigationLinks && (
+          <ul className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <li key={link}>
+                <a
+                  href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
+                  className={`text-sm font-medium tracking-wide transition-colors duration-200 hover:text-violet-500 ${
+                    dark ? "text-gray-400" : "text-gray-500"
+                  }`}
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {link}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* ── Right Actions ── */}
         <div className="flex items-center gap-3">
@@ -158,7 +164,7 @@ export default function Navbar() {
           </Link>
 
           {/* Mobile Menu Toggle */}
-          <button
+          {!hideNavigationLinks && <button
             onClick={() => setMenuOpen((o) => !o)}
             className={`md:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-200 ${
               dark ? "text-gray-400 hover:text-white hover:bg-white/5" : "text-gray-500 hover:text-gray-900 hover:bg-black/5"
@@ -173,12 +179,12 @@ export default function Navbar() {
                 <path d="M3 8h18M3 16h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             )}
-          </button>
+          </button>}
         </div>
       </div>
 
       {/* ── Mobile Menu ── */}
-      <div
+      {!hideNavigationLinks && <div
         className={`md:hidden transition-all duration-300 overflow-hidden ${
           menuOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
         } ${dark ? "bg-[#0a0a12]/95 border-t border-white/[0.06]" : "bg-white/95 border-t border-black/[0.06]"}`}
@@ -208,7 +214,7 @@ export default function Navbar() {
             </Link>
           }
         </div>
-      </div>
+      </div>}
 
     </nav>
   );

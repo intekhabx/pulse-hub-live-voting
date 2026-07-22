@@ -21,6 +21,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   
   const [filter, setFilter] = useState<FilterType>("all");  
   const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
+  const filteredPollResponse = filter === "all" ? totalPollResponse : totalPollResponse?.filter((r) => getPollStatus(r.expiresAt) === filter);
 
   const getMyPolls = async() => {
     const res = await pollService.getMyPolls();
@@ -34,6 +35,11 @@ export function PollsSection({ setActive }: PollsSectionProps) {
     getMyPolls();
   }, [])
   
+
+  useEffect(()=> {
+    // io.on("server_pollsubmit",)
+  }, [])
+
 
 
   const navigate = useNavigate();
@@ -137,7 +143,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                 className="text-sm font-semibold text-gray-300"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                {totalPollResponse?.[idx].totalResponse || "00"}
+                {filteredPollResponse?.[idx].totalResponse || "00"}
               </span>
             </div>
             <div className="col-span-2 flex items-center">

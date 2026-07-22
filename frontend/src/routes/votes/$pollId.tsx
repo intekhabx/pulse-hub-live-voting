@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import pollService from '../../services/pollService';
 import type { Poll } from '../../components/Dashboard/assets/types';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { router } from '../../App';
 import authService from '../../services/authService';
+import { DataContext } from '../../Context/ContextApi';
+import { StatusBadge } from '../../components/Dashboard/StatusBadge';
 
 
 interface IPollInputData {
@@ -20,6 +22,13 @@ export const Route = createFileRoute('/votes/$pollId')({
 
 function RouteComponent() {
   const { pollId } = Route.useParams();
+
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error("Vote page must be used within ContextApiProvider");
+  }
+  const { dark } = context;
+
   const [loading, setLoading] = useState(false);
 
   const [pollData, setPollData] = useState<Poll | null>();
@@ -109,7 +118,6 @@ function RouteComponent() {
   // getTempPollData to autofill the poll
   useEffect(()=> {
     const data = localStorage.getItem("tempPollData");
-    console.log("tempdata",data);
     if(data){
       setPollInputData(JSON.parse(data));
     }
@@ -126,68 +134,119 @@ function RouteComponent() {
   }, [])
 
   return (
-    <>
-      <div className="h-72 bg-[#0a0a12] text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Vote Page</h1>
-          <p className="text-gray-400 mt-2">Poll ID: {pollId}</p>
-        </div>
+    <div className={`relative min-h-screen overflow-hidden px-4 pb-8 pt-28 transition-colors duration-300 sm:px-6 sm:pb-12 sm:pt-32 ${dark ? "bg-[#0a0a12] text-white" : "bg-[#f7f6ff] text-gray-950"}`}>
+      {/* Background treatment shared with the landing page */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className={`absolute left-1/2 top-[-15rem] h-[36rem] w-[36rem] -translate-x-1/2 rounded-full blur-[120px] ${dark ? "bg-violet-600/15" : "bg-violet-400/20"}`} />
+        <div className={`absolute right-[-8rem] top-1/3 h-72 w-72 rounded-full blur-[100px] ${dark ? "bg-fuchsia-500/10" : "bg-fuchsia-400/15"}`} />
+        <svg className={`absolute inset-0 h-full w-full ${dark ? "opacity-[0.04]" : "opacity-[0.06]"}`} xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="vote-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill={dark ? "white" : "black"} />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#vote-dots)" />
+        </svg>
       </div>
 
-      <div className="min-h-screen bg-[#0a0a12] text-white py-10 px-4">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-800 bg-[#151520] p-8 shadow-xl">
-          <h1 className="text-3xl font-bold text-blue-400">
-            {pollData?.title}
-          </h1>
+      <main className="relative z-10 mx-auto max-w-3xl">
+        <div className="mb-6 flex items-center justify-center gap-3 sm:mb-8">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <path d="M3 12h3l3-8 4 16 3-8 3 4h2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className={`text-lg font-black tracking-tight ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+            Pulse<span className="text-violet-500">Hub</span>
+          </span>
+        </div>
 
-          <p className="mt-2 text-gray-400">
-            {pollData?.description}
-          </p>
+        <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
+          <div className={`border-b bg-gradient-to-r from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08] px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
+            <div className={`mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              <StatusBadge expiresAt={pollData ? pollData?.expiresAt : ""} />
+            </div>
+            <h1 className={`text-3xl font-black tracking-tight sm:text-4xl ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+              {pollData?.title}
+            </h1>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+            {pollData?.description && (
+              <p className={`mt-3 max-w-2xl text-sm leading-relaxed sm:text-base ${dark ? "text-gray-400" : "text-gray-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                {pollData.description}
+              </p>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:space-y-6 sm:p-8">
             {pollData?.questions?.map((ques, idx) => (
               <div
                 key={ques._id}
-                className="rounded-xl border border-gray-700 bg-[#1b1b2a] p-5"
+                className={`rounded-2xl border p-5 transition-colors duration-200 sm:p-6 ${dark ? "border-white/[0.07] bg-white/[0.025] hover:border-violet-500/20" : "border-gray-200 bg-[#fcfbff] hover:border-violet-300 hover:shadow-sm"}`}
               >
-                <h2 className="mb-4 text-lg font-semibold">
-                  <span className="text-blue-400">Q{idx + 1}.</span>{" "}
+                <div className="mb-5 flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-xs font-bold text-violet-300" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    {idx + 1}
+                  </span>
+                  <h2 className={`pt-0.5 text-base font-bold leading-relaxed sm:text-lg ${dark ? "text-gray-100" : "text-gray-900"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
                   {ques.questionText}
-                  {ques.required ? <span className="text-red-500">*</span> : null}
-                </h2>
+                    {ques.required ? <span className="ml-1 text-fuchsia-400">*</span> : null}
+                  </h2>
+                </div>
 
                 <div className="space-y-3">
-                  {ques.options?.map((opt) => (
-                    <label
-                      key={opt._id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-700 bg-[#232336] px-4 py-3 transition hover:border-blue-500 hover:bg-[#2c2c44]"
-                    >
-                      <input
-                        type="radio"
-                        name={ques._id}
-                        value={opt._id}
-                        className="accent-blue-500"
-                        required= {ques.required ? true : false}
-                        checked= {pollInputData?.find((item)=> item.questionId === ques._id)?.optionId === opt._id}
-                        onChange={()=> handleSelect(ques._id, opt._id)}
-                      />
+                  {ques.options?.map((opt) => {
+                    const isSelected = pollInputData?.find((item) => item.questionId === ques._id)?.optionId === opt._id;
 
-                      <span>{opt.optionText}</span>
-                    </label>
-                  ))}
+                    return (
+                      <label
+                        key={opt._id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                          isSelected
+                            ? dark
+                              ? "border-emerald-500/60 bg-emerald-500/[0.10] text-white"
+                              : "border-emerald-500/70 bg-emerald-50 text-gray-900"
+                            : dark
+                              ? "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-violet-500/40 hover:bg-violet-500/[0.06] hover:text-white"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-violet-300 hover:bg-violet-50/50 hover:text-gray-950"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={ques._id}
+                          value={opt._id}
+                          className="peer sr-only"
+                          required= {ques.required ? true : false}
+                          checked= {isSelected}
+                          onChange={()=> handleSelect(ques._id, opt._id)}
+                        />
+                        <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
+                        <span className="text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
             ))}
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-blue-600 py-3 font-semibold transition hover:bg-blue-700"
+              disabled={loading}
+              className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              Submit Vote
+              {loading ? "Submitting..." : "Submit Vote"}
+              {!loading && (
+                <svg className="transition-transform duration-200 group-hover:translate-x-1" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </button>
           </form>
         </div>
-      </div>
-    </>
+        <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          Your response is securely recorded by PulseHub.
+        </p>
+      </main>
+    </div>
   )
 }

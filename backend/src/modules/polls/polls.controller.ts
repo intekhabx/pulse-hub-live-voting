@@ -41,7 +41,7 @@ export const getMyPolls = asyncHandler(async (req: AuthRequest, res: Response)=>
   // step:3 find all responses of every polls
   for (const poll of polls) {
     const res = await responseModel.find({pollId: poll._id});
-    pollResponse.push({pollId: poll._id, totalResponse: res.length})
+    pollResponse.push({pollId: poll._id, totalResponse: res.length, expiresAt: poll.expiresAt})
   }
 
   ApiResponse.ok(res, "polls fetched successfully", {polls, pollResponse});
@@ -138,7 +138,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   });
 
   await poll.save();
-  io.emit("pollUpdated");
+  io.emit("server_pollupdated", "user submit ther poli");
 
   ApiResponse.ok(res, "poll submitted successfully");
 })
