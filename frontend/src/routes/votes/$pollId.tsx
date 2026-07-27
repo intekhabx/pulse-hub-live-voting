@@ -32,11 +32,22 @@ function RouteComponent() {
 
   const [loading, setLoading] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
-
   const [pollData, setPollData] = useState<Poll | null>();
-
-
   const [pollInputData, setPollInputData] = useState<IPollInputData[]>([]);
+
+
+  useEffect(() => {
+    async function getPollById(){
+      try {
+        const result = await pollService.getPollById(pollId);
+        setPollData(result.data);
+      } finally {
+        setPollLoading(false);
+      }
+    }
+    getPollById();
+  }, []);
+
 
   const handleSelect = (questionId: string, optionId: string) => {
     setPollInputData((prev) => {
@@ -57,39 +68,28 @@ function RouteComponent() {
     })
   }
 
-  useEffect(() => {
-    async function getPollById(){
-      try {
-        const result = await pollService.getPollById(pollId);
-        setPollData(result.data);
-      } finally {
-        setPollLoading(false);
-      }
-    }
-    getPollById();
-  }, []);
-  
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>)=> {
     setLoading(true);
     e.preventDefault();
 
     // step:1 - get data from form
-    const formData = new FormData(e.currentTarget);
+    // const formData = new FormData(e.currentTarget);
 
     // step:2 - creating an array of question and option
-    const answers: { questionId: string; optionId: string}[] = [];
+    // const answers: { questionId: string; optionId: string}[] = [];
 
-    // step:3 - push all {questionId, optionId} in the answers array
-    for (const [questionId, optionId] of formData.entries()) {
-      answers.push({
-        questionId,
-        optionId: optionId.toString()
-      })
-    }
+    // // step:3 - push all {questionId, optionId} in the answers array
+    // for (const [questionId, optionId] of formData.entries()) {
+    //   answers.push({
+    //     questionId,
+    //     optionId: optionId.toString()
+    //   })
+    // }
 
     try {
-      await pollService.submitVote(pollId, answers);
+      // await pollService.submitVote(pollId, answers);
+      await pollService.submitVote(pollId, pollInputData);
       localStorage.removeItem("tempPollData");
       setPollInputData([]);
       toast.success("poll submitted successfully");
@@ -98,7 +98,7 @@ function RouteComponent() {
       if(axios.isAxiosError(err) && err?.response?.status === 401 && err?.response?.data.message === "please login first to submit the vote"){
         toast.error(err?.response?.data.message);
         
-        localStorage.setItem("tempPollData", JSON.stringify(answers));
+        localStorage.setItem("tempPollData", JSON.stringify(pollInputData));
         router.navigate({
           href: `/login?next=${encodeURIComponent(`/votes/${pollId}`)}`,
         })

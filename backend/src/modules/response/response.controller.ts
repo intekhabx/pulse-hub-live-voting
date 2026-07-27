@@ -4,6 +4,7 @@ import ApiResponse from "../../utils/api-response.utils";
 import asyncHandler from "../../utils/async-handler.middleware";
 import pollModel from "../polls/polls.model";
 import type {Response} from 'express';
+import responseModel from "./response.model";
 
 
 
@@ -45,13 +46,10 @@ export const getDashboardData = asyncHandler(async(req: AuthRequest, res: Respon
 
   // total responses
   let totalResponses = 0;
-  polls.forEach((poll)=>{
-    poll.questions.forEach((question)=>{
-      question.options.forEach((opt)=>{
-        totalResponses += opt.votes;
-      })
-    })
-  })
+  for (const poll of polls) {
+    const response = await responseModel.find({pollId: poll._id});
+    totalResponses += response.length;
+  }
 
 
   ApiResponse.ok(res, "dashboard data fetched successfully", {polls, totalPolls, publishedResult, activePolls, totalResponses});

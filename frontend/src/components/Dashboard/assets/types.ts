@@ -47,3 +47,35 @@ export interface Option {
   optionText: string;
   votes: number;
 }
+
+
+export interface IPollAnalytics {
+  _id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  expiresAt: string;
+  isPublished: boolean;
+  allowAnonymous: boolean;
+  createdBy: string;
+  analytics: [
+    {
+      _id: string;
+      question: string;
+      totalVotes: string;
+      options: [
+        {
+          optionId: string;
+          optionText: string;
+          votes: number;
+          percentage: number;
+        }
+      ]
+    }
+  ];
+  anonymousPercentage: number;
+  anonymousUserCount: number;
+  authecticatedPercentage: number;
+  authenticatedUserCount: number;
+  totalResponseCount: number;
+}

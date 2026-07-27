@@ -6,7 +6,7 @@ import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
 import { io } from "../../server";
-import userModel from "../auth/auth.model";
+import type mongoose from "mongoose";
 
 
 export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
@@ -63,6 +63,230 @@ export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
 
 
 
+export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
+  // step:1 - find total poll response
+  const totalResponses = await responseModel.find({pollId});
+
+  // step:2 - find the total, authenticated and anonymous response count
+  const totalResponseCount = totalResponses.length;
+  const authenticatedUserCount = totalResponses.filter((r)=> r.userId).length;
+  const anonymousUserCount = totalResponseCount - authenticatedUserCount;
+
+  // step:3 - finding percentage of both authecticated and anonymous User
+  const authecticatedPercentage = (authenticatedUserCount / totalResponseCount) * 100;
+  const anonymousPercentage = (anonymousUserCount / totalResponseCount) * 100;
+
+  // step:4 - finding each answers optionVotes count and their percentage
+  const analytics = await pollModel.aggregate([
+    // step:1 - Sirf us poll ko select karo jiska analytics chahiye
+    {
+      $match: {
+        _id: pollId
+      }
+    },
+  
+    // Step:2 - Response collection se is poll ke saare responses lekar
+    // "responses" naam ki ek array bana do
+    {
+      $lookup: {
+        from: "responses",
+        localField: "_id",
+        foreignField: "pollId",
+        as: "responses"
+      }
+    },
+  
+    // Step 3: Questions array ko tod do
+    // Ek document = Ek question
+    {
+      $unwind: "$questions"
+    },
+  
+    // Step 4: Har question ke options ko bhi tod do
+    // Ab ek document = Ek option
+    {
+      $unwind: "$questions.options"
+    },
+  
+    // Step 5: Har option ke kitne votes hain wo calculate karo
+    {
+      $addFields: {
+  
+        votes: {
+  
+          // Count nikalo
+          $size: {
+  
+            // Sirf wahi answers rakho jinka optionId
+            // current option ke _id ke equal ho
+            $filter: {
+  
+              // Saare responses ke answers ko
+              // ek hi array me convert karo
+              input: {
+  
+                $reduce: {
+  
+                  // responses array
+                  input: "$responses",
+  
+                  // Empty array se start karo
+                  initialValue: [],
+  
+                  // Har response ke answers ko
+                  // previous array me add karte jao
+                  in: {
+  
+                    $concatArrays: [
+                      "$$value",
+                      "$$this.answers"
+                    ]
+  
+                  }
+  
+                }
+  
+              },
+  
+              // Har answer ko "answer" naam se access karenge
+              as: "answer",
+  
+              // Agar answer.optionId == current option._id
+              // to us answer ko include karo
+              cond: {
+                $eq: [
+                  "$$answer.optionId",
+                  "$questions.options._id"
+                ]
+              }
+  
+            }
+  
+          }
+  
+        }
+  
+      }
+    },
+  
+    // Step 6: Ab dubara question wise group karo
+    {
+      $group: {
+  
+        // Group by question id
+        _id: "$questions._id",
+  
+        // Question text
+        question: {
+          $first: "$questions.questionText"
+        },
+  
+        // Total votes of all options
+        totalVotes: {
+          $sum: "$votes"
+        },
+  
+        // Options array bana do
+        options: {
+  
+          $push: {
+  
+            optionId: "$questions.options._id",
+  
+            optionText: "$questions.options.optionText",
+  
+            votes: "$votes"
+  
+          }
+  
+        }
+  
+      }
+    },
+  
+    // Step 7: Har option ka percentage calculate karo
+    {
+      $addFields: {
+  
+        options: {
+  
+          $map: {
+  
+            // Options array ke upar loop
+            input: "$options",
+  
+            // Har option ko opt naam do
+            as: "opt",
+  
+            // Naya option object return karo
+            in: {
+  
+              optionId: "$$opt.optionId",
+  
+              optionText: "$$opt.optionText",
+  
+              votes: "$$opt.votes",
+  
+              percentage: {
+  
+                // Agar vote hi nahi aaye
+                // to percentage = 0
+                $cond: [
+  
+                  {
+                    $eq: [
+                      "$totalVotes",
+                      0
+                    ]
+                  },
+  
+                  0,
+  
+                  // warna
+                  // (optionVotes / totalVotes) * 100
+                  {
+  
+                    $multiply: [
+  
+                      {
+  
+                        $divide: [
+  
+                          "$$opt.votes",
+  
+                          "$totalVotes"
+  
+                        ]
+  
+                      },
+  
+                      100
+  
+                    ]
+  
+                  }
+  
+                ]
+  
+              }
+  
+            }
+  
+          }
+  
+        }
+  
+      }
+  
+    }
+  
+  ]);
+
+
+  return {totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
+}
+
+
 export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   // step:1 - extract answers from body
   const {answers} = req.body;
@@ -84,22 +308,22 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   }
 
   // step:4 - check poll is for authenticated user or not
-  let user;
-  if(!poll.allowAnonymous){
-    // anonymous can't submit so check user is loggedin or not
-    user = await userModel.findById(req?.user?.id);
-    if(!user){
-      throw ApiError.unAuthorized("please login first to submit the vote");
-    }
+  if(!poll.allowAnonymous && !req?.user?.id){
+    throw ApiError.unAuthorized("please login first to submit the vote");
   }
+
+  const anonymousId = req?.signedCookies?.anonymousId;
 
   // step:6 - check user is already submitted thier vote or not
   let alreadyVoted;
-  if(user){
-    alreadyVoted = await responseModel.findOne({userId: user?._id, pollId: poll._id});
+  if(req?.user?.id){
+    alreadyVoted = await responseModel.findOne({userId: req.user.id, pollId: poll._id});
+  }
+  else if(anonymousId){
+    alreadyVoted = await responseModel.findOne({anonymousId, pollId: poll._id});
   }
   else{
-    alreadyVoted = await responseModel.findOne({anonymousId: req?.signedCookies?.anonymousId, pollId: poll._id})
+    throw ApiError.badRequest("session not found, please refresh the page and try again");
   }
 
   if(alreadyVoted){
@@ -107,38 +331,25 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   }
 
   // step:7 - store response in DB
-  if(user){
+  if(req?.user?.id){
     await responseModel.create({
       pollId: poll._id,
-      userId: user?._id,
+      userId: req.user.id,
       answers
     })
   }
   else{
     await responseModel.create({
       pollId: poll._id,
-      anonymousId: req?.signedCookies?.anonymousId,
+      anonymousId,
       answers
     })
   }
 
-  // step:8 - update votes count in poll votes //extra
-  answers.forEach((ans:any) => {
-    // poll.questions.id() --> ye v internally find() ka hi use krta h
-    const question = poll.questions.id(ans.questionId);
-    // const question = poll.questions.find((q) => q._id.toString() === ans.questionId);
-    if(!question) return;
-
-    // questions.options.id() --> ye v internally find() ka hi use krta h
-    const option = question.options.id(ans.optionId);
-    // const options = question.options.find((o) => o._id.toString() === o.optionId);
-    if(!option) return;
-
-    option.votes += 1;
-  });
-
-  await poll.save();
-  io.emit("server_pollupdated", "user submit ther poli");
+  // step:8 - send io response to the poll creator with totalPollCount
+  // const data = await getPollDetailedAnalytics(poll._id);
+  const totalPollResponse = await responseModel.find({pollId: poll._id});
+  io.emit("server:poll-updated", {totalPollResponse, totalPollCount: totalPollResponse.length});
 
   ApiResponse.ok(res, "poll submitted successfully");
 })
@@ -152,10 +363,8 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
     throw ApiError.notFound("poll not found");
   }
 
-  // step:2 - count total responses
-  const totalResponse = await responseModel.countDocuments({
-    pollId: poll._id
-  })
+  // step:2 - getPollDetailedAnalytics
+  const {anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
 
-  ApiResponse.ok(res, "poll analytics fetched", {pollTitle: poll.title, totalResponse, questions: poll.questions});
+  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy , anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
 })

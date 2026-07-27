@@ -122,7 +122,7 @@ export const renewToken = asyncHandler(async (req: Request, res: Response, next:
 
 export const getUserSession = asyncHandler(async(req: AuthRequest, res: Response)=> {
   // step:1 - extract cookie of the user
-  const anonymousId = req?.signedCookies?.anonymoudId;
+  const anonymousId = req?.signedCookies?.anonymousId;
   const refreshToken = req?.cookies?.refreshToken;
 
   // step:2 - if user cookie has refreshToken then user is already authenticated
