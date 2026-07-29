@@ -74,7 +74,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
         </div>
         <button
           onClick={() => setActive("create")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
           {Icons.plus} New Poll
@@ -119,79 +119,103 @@ export function PollsSection({ setActive }: PollsSectionProps) {
             </div>
           ))}
         </div>
-        {filtered?.map((poll, idx) => (
-          <div
-            key={poll._id}
-            className="grid grid-cols-12 gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors group"
-          >
-            <div className="col-span-4">
-              <p
-                className="text-sm font-medium text-gray-200 leading-snug"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {poll.title}
-              </p>
-              <p
-                className="text-xs text-gray-600 mt-0.5"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {poll.questions.length} questions · {poll.allowAnonymous ? "Anonymous" : "Authenticated"}
-                {poll.isPublished && <span className="ml-2 text-emerald-500">· Published</span>}
-              </p>
+        {filtered && filtered.length > 0 ? (
+          filtered.map((poll, idx) => (
+            <div
+              key={poll._id}
+              className="grid grid-cols-12 gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors group"
+            >
+              <div className="col-span-4">
+                <p
+                  className="text-sm font-medium text-gray-200 leading-snug"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {poll.title}
+                </p>
+                <p
+                  className="text-xs text-gray-600 mt-0.5"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {poll.questions.length} questions · {poll.allowAnonymous ? "Anonymous" : "Authenticated"}
+                  {poll.isPublished && <span className="ml-2 text-emerald-500">· Published</span>}
+                </p>
+              </div>
+
+              <div className="col-span-2 flex items-center">
+                <StatusBadge expiresAt={poll.expiresAt} />
+              </div>
+
+              <div className="col-span-2 flex items-center">
+                <span
+                  className="text-sm font-semibold text-gray-300"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {filteredPollResponse?.[idx].totalResponse || "00"}
+                </span>
+              </div>
+
+              <div className="col-span-2 flex items-center">
+                <span
+                  className="text-xs text-gray-500"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {new Date(poll.expiresAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+
+              <div className="col-span-2 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => openPollPage(poll._id)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                  title="View"
+                >
+                  {Icons.eye}
+                </button>
+
+                <button
+                  onClick={() => copyPollLink(poll._id)}
+                  className={`h-7 rounded-lg flex items-center justify-center transition-colors ${
+                    copiedPollId === poll._id
+                      ? "w-auto px-2 text-cyan-400 bg-cyan-500/10"
+                      : "w-7 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10"
+                  }`}
+                  title={copiedPollId === poll._id ? "Copied" : "Copy link"}
+                >
+                  {copiedPollId === poll._id ? (
+                    <span
+                      className="text-[11px] font-semibold"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      Copied
+                    </span>
+                  ) : (
+                    Icons.link
+                  )}
+                </button>
+
+                <button
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  title="Delete"
+                >
+                  {Icons.trash}
+                </button>
+              </div>
             </div>
-            <div className="col-span-2 flex items-center">
-              <StatusBadge expiresAt={poll.expiresAt} />
-            </div>
-            <div className="col-span-2 flex items-center">
-              <span
-                className="text-sm font-semibold text-gray-300"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {filteredPollResponse?.[idx].totalResponse || "00"}
-              </span>
-            </div>
-            <div className="col-span-2 flex items-center">
-              <span
-                className="text-xs text-gray-500"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {new Date(poll.expiresAt).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
-            <div className="col-span-2 flex items-center justify-end gap-2">
-              <button
-                onClick={()=> openPollPage(poll._id)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
-                title="View"
-              >
-                {Icons.eye}
-              </button>
-              <button
-                onClick={()=> copyPollLink(poll._id)}
-                className={`h-7 rounded-lg flex items-center justify-center transition-colors ${
-                  copiedPollId === poll._id
-                    ? "w-auto px-2 text-cyan-400 bg-cyan-500/10"
-                    : "w-7 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10"
-                }`}
-                title={copiedPollId === poll._id ? "Copied" : "Copy link"}
-              >
-                {copiedPollId === poll._id ? (
-                  <span className="text-[11px] font-semibold" style={{ fontFamily: "'DM Sans', sans-serif" }}>Copied</span>
-                ) : Icons.link}
-              </button>
-              <button
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                title="Delete"
-              >
-                {Icons.trash}
-              </button>
-            </div>
+          ))
+        ) : (
+          <div className="py-12 text-center">
+            <p
+              className="text-lg font-semibold text-white"
+              style={{ fontFamily: "'Syne', sans-serif" }}
+            >
+              No Polls Created Yet
+            </p>
           </div>
-        ))}
+        )}
       </div>
       </>}
     </div>

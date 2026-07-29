@@ -41,7 +41,7 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
         </div>
         <button
           onClick={() => setActive("create")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition-all hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
           {Icons.plus} Create Poll
@@ -109,34 +109,44 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
             </button>
           </div>
           <div className="space-y-3">
-            {dashboardData?.polls?.map((poll) => (
-              <div
-                key={poll._id}
-                className="text-gray-200 flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <div>
-                    <p
-                      className="text-sm font-medium text-gray-200 truncate"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      {poll.title}
-                    </p>
-                    <p
-                      className="text-xs text-gray-600 mt-0.5"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      {poll.description} 
-                      {/* · {poll.questions.length} questions */}
-                    </p>
+            {dashboardData && dashboardData?.polls.length > 0 
+              ? 
+              dashboardData?.polls?.map((poll) => (
+                <div
+                  key={poll._id}
+                  className="text-gray-200 flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div>
+                      <p
+                        className="text-sm font-medium text-gray-200 truncate"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        {poll.title}
+                      </p>
+                      <p
+                        className="text-xs text-gray-600 mt-0.5"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        {poll.description} 
+                        {/* · {poll.questions.length} questions */}
+                      </p>
+                    </div>
                   </div>
+                  <div className="text-xs">
+                    {poll.createdAt.split("T")[0]}
+                  </div>
+                  <StatusBadge expiresAt={poll.expiresAt} />
                 </div>
-                <div className="text-xs">
-                  {poll.createdAt.split("T")[0]}
-                </div>
-                <StatusBadge expiresAt={poll.expiresAt} />
+              ))
+              : 
+              <div className="py-16 text-center">
+                <p
+                className="text-md text-slate-600">
+                  No Recent Poll Found
+                </p>
               </div>
-            ))}
+            }
           </div>
         </div>
  

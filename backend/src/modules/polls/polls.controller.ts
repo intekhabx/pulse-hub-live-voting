@@ -7,6 +7,7 @@ import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
 import { io } from "../../server";
 import type mongoose from "mongoose";
+import redis from "../../config/redis.config";
 
 
 export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
@@ -63,7 +64,7 @@ export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
 
 
 
-export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
+const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   // step:1 - find total poll response
   const totalResponses = await responseModel.find({pollId});
 
@@ -84,8 +85,7 @@ export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=>
         _id: pollId
       }
     },
-  
-    // Step:2 - Response collection se is poll ke saare responses lekar
+    // step:2 - Response collection se is poll ke saare responses lekar
     // "responses" naam ki ek array bana do
     {
       $lookup: {
@@ -95,62 +95,46 @@ export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=>
         as: "responses"
       }
     },
-  
-    // Step 3: Questions array ko tod do
+    // step:3 - Questions array ko tod do
     // Ek document = Ek question
     {
       $unwind: "$questions"
     },
-  
-    // Step 4: Har question ke options ko bhi tod do
+    // step:4 - Har question ke options ko bhi tod do
     // Ab ek document = Ek option
     {
       $unwind: "$questions.options"
     },
   
-    // Step 5: Har option ke kitne votes hain wo calculate karo
+    // step:5 - Har option ke kitne votes hain wo calculate karo
     {
       $addFields: {
-  
         votes: {
-  
           // Count nikalo
           $size: {
-  
             // Sirf wahi answers rakho jinka optionId
             // current option ke _id ke equal ho
             $filter: {
-  
               // Saare responses ke answers ko
               // ek hi array me convert karo
               input: {
-  
                 $reduce: {
-  
                   // responses array
                   input: "$responses",
-  
                   // Empty array se start karo
                   initialValue: [],
-  
                   // Har response ke answers ko
                   // previous array me add karte jao
                   in: {
-  
                     $concatArrays: [
                       "$$value",
                       "$$this.answers"
                     ]
-  
                   }
-  
                 }
-  
               },
-  
               // Har answer ko "answer" naam se access karenge
               as: "answer",
-  
               // Agar answer.optionId == current option._id
               // to us answer ko include karo
               cond: {
@@ -159,131 +143,140 @@ export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=>
                   "$questions.options._id"
                 ]
               }
-  
             }
-  
           }
-  
         }
-  
       }
     },
-  
-    // Step 6: Ab dubara question wise group karo
+    // step:6 - Ab dubara question wise group karo
     {
       $group: {
-  
         // Group by question id
         _id: "$questions._id",
-  
         // Question text
         question: {
           $first: "$questions.questionText"
         },
-  
         // Total votes of all options
         totalVotes: {
           $sum: "$votes"
         },
-  
         // Options array bana do
         options: {
-  
           $push: {
-  
             optionId: "$questions.options._id",
-  
             optionText: "$questions.options.optionText",
-  
             votes: "$votes"
-  
           }
-  
         }
-  
       }
     },
-  
-    // Step 7: Har option ka percentage calculate karo
+    // step:7 - Har option ka percentage calculate karo
     {
       $addFields: {
-  
         options: {
-  
           $map: {
-  
             // Options array ke upar loop
             input: "$options",
-  
             // Har option ko opt naam do
             as: "opt",
-  
             // Naya option object return karo
             in: {
-  
               optionId: "$$opt.optionId",
-  
               optionText: "$$opt.optionText",
-  
               votes: "$$opt.votes",
-  
               percentage: {
-  
                 // Agar vote hi nahi aaye
                 // to percentage = 0
                 $cond: [
-  
                   {
                     $eq: [
                       "$totalVotes",
                       0
                     ]
                   },
-  
                   0,
-  
                   // warna
                   // (optionVotes / totalVotes) * 100
                   {
-  
                     $multiply: [
-  
                       {
-  
                         $divide: [
-  
                           "$$opt.votes",
-  
                           "$totalVotes"
-  
                         ]
-  
                       },
-  
                       100
-  
                     ]
-  
                   }
-  
                 ]
-  
               }
-  
             }
-  
           }
-  
         }
-  
       }
-  
     }
-  
   ]);
 
 
   return {totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
+}
+
+
+const updateRedisPollAnalyticsData = async(key: string, answers:{questionId: string, optionId: string}[], userId: string | undefined) => {
+  // step:1 - find the redis stored data with key
+  const redisCachedPollData = await redis.get(key);
+
+  if(!redisCachedPollData){
+    return null;
+  }
+
+
+  const analyticsData = JSON.parse(redisCachedPollData);
+
+  // step:2 - update all 3 response count
+  analyticsData.totalResponseCount++;
+
+  if (userId) {
+    analyticsData.authenticatedUserCount++;
+  } else {
+    analyticsData.anonymousUserCount++;
+  }
+
+  // step:3 - recalculate overall percentages
+  analyticsData.authecticatedPercentage = ((analyticsData.authenticatedUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
+  analyticsData.anonymousPercentage = ((analyticsData.anonymousUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
+
+  //step:4 - updating the answer
+  answers.forEach((answer) => {
+    const question = analyticsData.analytics.find(
+      (q:any) => q._id === answer.questionId
+    );
+  
+    if (!question) return;
+  
+    // question vote count increase
+    question.totalVotes++;
+  
+    const option = question.options.find(
+      (o:any) => o.optionId === answer.optionId
+    );
+  
+    if (!option) return;
+  
+    // option vote increase
+    option.votes++;
+  
+    // percentage update
+    question.options.forEach((opt:any) => {
+      opt.percentage = (opt.votes / question.totalVotes) * 100;
+    });
+  })
+  
+  //step:5 - saving the updated analyticsData
+  await redis.set(key, JSON.stringify(analyticsData));
+
+  return analyticsData;
 }
 
 
@@ -313,8 +306,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   }
 
   const anonymousId = req?.signedCookies?.anonymousId;
-
-  // step:6 - check user is already submitted thier vote or not
+  // step:5 - check user is already submitted thier vote or not
   let alreadyVoted;
   if(req?.user?.id){
     alreadyVoted = await responseModel.findOne({userId: req.user.id, pollId: poll._id});
@@ -330,7 +322,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     throw ApiError.conflict("you already submitted your vote");
   }
 
-  // step:7 - store response in DB
+  // step:6 - store response in DB
   if(req?.user?.id){
     await responseModel.create({
       pollId: poll._id,
@@ -346,10 +338,18 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     })
   }
 
-  // step:8 - send io response to the poll creator with totalPollCount
-  // const data = await getPollDetailedAnalytics(poll._id);
-  const totalPollResponse = await responseModel.find({pollId: poll._id});
-  io.emit("server:poll-updated", {totalPollResponse, totalPollCount: totalPollResponse.length});
+  // step:7 check the redis DB that polAnalyticsData is present or not and if present then update it
+  const key = `poll:${poll._id}`;
+  let analyticsData = await updateRedisPollAnalyticsData(key, answers, req?.user?.id?.toString());
+
+  if(!analyticsData){
+    // now analyticData is not present in redis then fetch from db and store in redis also
+    analyticsData = await getPollDetailedAnalytics(poll._id);
+    await redis.set(key, JSON.stringify(analyticsData));
+  }
+  
+  // step:8- send io response to the poll creator with the pollAnalyticsData
+  io.emit("server:poll-updated", analyticsData);
 
   ApiResponse.ok(res, "poll submitted successfully");
 })
