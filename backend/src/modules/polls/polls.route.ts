@@ -15,7 +15,8 @@ router.get('/get-poll/:pollId', controller.getPollById);
 router.post("/submit-vote/:pollId", checkAuthenticatedAndAnonymousUser, controller.submitVote);
 
 router.get('/get-poll-analytics/:pollId', isLoggedIn, controller.getPollAnalytics);
-// ans - dataytype, delete poll, login user and non login user poll
+
+router.get("/get-analytics-page-data", isLoggedIn, controller.getAnalyticsPageData);
 
 
 export default router;

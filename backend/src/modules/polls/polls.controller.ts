@@ -371,3 +371,26 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
 
   ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
 })
+
+
+
+export const getAnalyticsPageData = asyncHandler(async(req: AuthRequest, res: Response)=> {
+  // step1: - find all polls created by the user
+  const polls = await pollModel.find({createdBy: req?.user?.id}).sort({createdAt: -1});
+  if(!polls){
+    throw ApiError.notFound("Not Found any poll");
+  }
+
+  // step:2 - find total responses of every poll
+  let anonymousPolls = 0;
+  const pollResponses = [];
+  for (const poll of polls) {
+    if(poll.allowAnonymous){
+      anonymousPolls++;
+    }
+    const totalResponse = await responseModel.find({pollId: poll._id});
+    pollResponses.push({pollId: poll._id, totalVoteCount: totalResponse.length, pollTitle: poll.title, expiresAt: poll.expiresAt})
+  }
+
+  ApiResponse.ok(res, "analytics page data fetched", {totalPolls: polls.length, anonymousPolls, pollResponses})
+})

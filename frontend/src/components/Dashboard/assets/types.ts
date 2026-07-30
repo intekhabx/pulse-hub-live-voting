@@ -79,3 +79,17 @@ export interface IPollAnalytics {
   authenticatedUserCount: number;
   totalResponseCount: number;
 }
+
+
+export interface IAnalyticsPageData {
+  totalPolls: number;
+  anonymousPolls: number;
+  pollResponses: [
+    {
+      pollId: string;
+      totalVoteCount: number;
+      pollTitle: string;
+      expiresAt: string;
+    }
+  ]
+}
