@@ -5,7 +5,7 @@ export interface Poll {
   title: string;
   // status: "active" | "expired" | "draft";
   // responses: number;
-  questions: [Question];
+  questions: Question[];
   description: string;
   createdAt: string;
   expiresAt: string;
@@ -32,14 +32,14 @@ export interface IDashboard {
   totalResponses: string;
   activePolls: string;
   publishedResult: string;
-  polls: [Poll];
+  polls: Poll[];
 }
 
 export interface Question {
   _id: string;
   questionText: string;
   required: boolean;
-  options: [Option];
+  options: Option[];
 }
 
 export interface Option {
@@ -57,21 +57,17 @@ export interface IPollAnalytics {
   isPublished: boolean;
   allowAnonymous: boolean;
   createdBy: string;
-  analytics: [
-    {
+  analytics: { //analytics is an array of object
       _id: string;
       question: string;
       totalVotes: string;
-      options: [
-        {
-          optionId: string;
-          optionText: string;
-          votes: number;
-          percentage: number;
-        }
-      ]
-    }
-  ];
+      options: { //option is an array of object under analytics
+        optionId: string;
+        optionText: string;
+        votes: number;
+        percentage: number;
+      }[]
+  }[];
   pollId: string;
   anonymousPercentage: number;
   anonymousUserCount: number;
@@ -84,12 +80,10 @@ export interface IPollAnalytics {
 export interface IAnalyticsPageData {
   totalPolls: number;
   anonymousPolls: number;
-  pollResponses: [
-    {
+  pollResponses: {
       pollId: string;
       totalVoteCount: number;
       pollTitle: string;
       expiresAt: string;
-    }
-  ]
+    }[];
 }

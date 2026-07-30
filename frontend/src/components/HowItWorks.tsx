@@ -169,7 +169,7 @@ export default function HowItWorks() {
 
         {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {STEPS.map(({ number, color, glow, bg, border, title, desc, visual }) => (
+          {STEPS.map(({ number, color, bg, border, title, desc, visual }) => (
             <div
               key={number}
               className={`group relative rounded-2xl p-6 border transition-all duration-300 hover:-translate-y-1 ${

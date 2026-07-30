@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import pollService from "../../../services/pollService";
 import type { IAnalyticsPageData } from "../assets/types";
 import { getPollStatus } from "../../../utils/getPollStatus";
+import { DataContext } from "../../../Context/ContextApi";
 
 export function AnalyticsSection() {
   const [pollResponse, setPollResponse] = useState<IAnalyticsPageData>();
@@ -30,6 +31,27 @@ export function AnalyticsSection() {
   }, []);
 
   const hasData = !!pollResponse?.pollResponses?.length;
+
+
+  // io totalResponse updation
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("DataContext must be used inside ContextApiProvider");
+  }
+  const {socketRef} = context;
+
+  useEffect(()=> {
+    socketRef.current?.on("server:poll-updated", (data) => {
+      setPollResponse((prev) => {
+        if (!prev) return prev;
+    
+        return {
+          ...prev,
+          pollResponses: prev.pollResponses.map((p) => p.pollId === data.pollId ? {...p, totalVoteCount: data.totalResponseCount} : p),
+        };
+      });
+    });
+  }, [])
 
   return (
     <div className="space-y-5">
