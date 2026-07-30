@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { StatusBadge } from "../StatusBadge";
 import { Icons } from "../Icons";
 import { getPollStatus } from "../../../utils/getPollStatus";
@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import pollService from "../../../services/pollService";
 import type { IPollResponse, Poll } from "../assets/types";
 import { Loader } from "../../Loader";
+import { DataContext } from "../../../Context/ContextApi";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -21,6 +22,21 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>();
   const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+
+  // updating totalPollResponse based on io data
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("DataContext must be used inside ContextApiProvider")
+  }
+  const {socketRef} = context;
+
+  useEffect(() => {
+    socketRef.current?.on("server:poll-updated", (data)=> {
+      setTotalPollResponse((prev)=> prev?.map((item)=> item.pollId === data.pollId ? {...item, totalResponse: data.totalResponseCount} : item))
+    })
+  }, [])
+  
   
   const [filter, setFilter] = useState<FilterType>("all");  
   const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
@@ -54,6 +70,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   }
 
 
+  // copy a poll link
   const copyPollLink = (pollId: string) => {
     navigator.clipboard.writeText(`${import.meta.env.VITE_BASE_URL}/votes/${pollId}`);
     setCopiedPollId(pollId);

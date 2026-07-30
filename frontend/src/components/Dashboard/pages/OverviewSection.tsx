@@ -53,7 +53,7 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
         <StatCard
           label="Total Polls"
           value={dashboardData?.totalPolls || ""}
-          sub="+1 this week"
+          sub="Your Polls"
           gradient="from-violet-500 to-fuchsia-500"
           icon={Icons.polls}
         />

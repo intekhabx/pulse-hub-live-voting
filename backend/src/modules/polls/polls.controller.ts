@@ -24,6 +24,9 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     createdBy: req.user?.id,
   })
 
+  // step:3 - send io response to the frontend
+  io.emit("server:poll-created");
+
   ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
 })
 
@@ -219,7 +222,7 @@ const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   ]);
 
 
-  return {totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
+  return {pollId, totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
 }
 
 
@@ -364,7 +367,7 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
   }
 
   // step:2 - getPollDetailedAnalytics
-  const {anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
+  const {pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
 
-  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy , anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
+  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
 })

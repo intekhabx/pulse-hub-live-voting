@@ -50,7 +50,6 @@ export interface Option {
 
 
 export interface IPollAnalytics {
-  _id: string;
   title: string;
   description: string;
   createdAt: string;
@@ -73,6 +72,7 @@ export interface IPollAnalytics {
       ]
     }
   ];
+  pollId: string;
   anonymousPercentage: number;
   anonymousUserCount: number;
   authecticatedPercentage: number;

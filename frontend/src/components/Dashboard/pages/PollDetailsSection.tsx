@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import pollService from "../../../services/pollService";
 import type { IPollAnalytics } from "../assets/types";
 import { StatusBadge } from "../StatusBadge";
 import { Loader } from "../../Loader";
+import { DataContext } from "../../../Context/ContextApi";
 
 interface PollDetailsSectionProps {
   pollId: string;
@@ -10,6 +11,21 @@ interface PollDetailsSectionProps {
 
 export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   const [poll, setPoll] = useState<IPollAnalytics | null>(null);
+
+
+  // fetching the data from the io
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("DataContext must be used inside ContextApiProvider")
+  }
+
+  const {socketRef} = context;
+  useEffect(() => {
+    socketRef.current?.on("server:poll-updated", (data)=>{
+      setPoll(data);
+    })
+  }, [])
+
 
   useEffect(() => {
     async function getPoll() {
@@ -180,7 +196,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
               <span
                 className="text-lg font-bold text-orange-400"
               >
-                {poll.authecticatedPercentage.toFixed(1)}%
+                {Number(poll.authecticatedPercentage).toFixed(1)}%
               </span>
             </div>
 
@@ -211,7 +227,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
               <span
                 className="text-lg font-bold text-violet-400"
               >
-                {poll.anonymousPercentage.toFixed(1)}%
+                {Number(poll.anonymousPercentage).toFixed(1)}%
               </span>
             </div>
           </div>

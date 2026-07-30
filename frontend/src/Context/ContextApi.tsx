@@ -10,7 +10,8 @@ export type ContextType = {
   dashboardData: IDashboard | undefined,
   dashboardLoading: boolean,
   setDashboardData: React.Dispatch<React.SetStateAction<IDashboard | undefined>>,
-  refreshDashboardData: () => Promise<void>
+  refreshDashboardData: () => Promise<void>,
+  socketRef: React.RefObject<ReturnType<typeof connectWS> | null>;
 }
 
 export const DataContext = createContext<ContextType | null>(null);
@@ -23,6 +24,7 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
     setDark(!dark);
   }
 
+  // socket.io connection working
   const socketRef = useRef<ReturnType<typeof connectWS> | null>(null);
 
   useEffect(()=>{
@@ -46,10 +48,15 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
     socketRef.current?.on("server:poll-updated", (data)=> {
       console.log(data)
     })
+
+    socketRef.current?.on("server:poll-created", ()=> {
+      refreshDashboardData();
+    })
   }, [])
 
 
 
+  // overview section data
   const [dashboardData, setDashboardData] = useState<IDashboard>();
   const [dashboardLoading, setDashboardLoading] = useState(true);
  
@@ -72,7 +79,7 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
 
 
   return (
-    <DataContext.Provider value={{dark, toggleTheme, dashboardData, dashboardLoading, setDashboardData, refreshDashboardData}}>
+    <DataContext.Provider value={{dark, toggleTheme, dashboardData, dashboardLoading, setDashboardData, refreshDashboardData, socketRef}}>
       {children}
     </DataContext.Provider>
   )

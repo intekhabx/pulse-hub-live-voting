@@ -1,7 +1,7 @@
 import pollService from "../../../services/pollService";
 import { useState } from "react";
 import { Icons } from "../Icons";
-
+import toast from "react-hot-toast";
 
 export function CreatePollSection({ setActive }: { setActive: (s: string) => void }) {
   const [title, setTitle] = useState("");
@@ -12,22 +12,18 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
     { questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }
   ]);
 
-  const [isCreated, setIsCreated] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  // const [createdPollId, setCreatedPollId] = useState("");
 
   const handleSubmit = async ()=>{
     setIsCreating(true);
     try {
-      const res = await pollService.createPoll({title, description, allowAnonymous, expiresAt, questions});
-      console.log(res);
-      // setCreatedPollId(res.data.pollId);
-      const link = `${window.location.origin}/poll/${res.data.pollId}`;
-      console.log(link);
-      setIsCreated(true);
+      await pollService.createPoll({title, description, allowAnonymous, expiresAt, questions});
+      toast.success("Poll Created Successfully");
+      setActive("polls"); //redirect to the mypolls section
     } 
-    catch (error) {
+    catch (error: any) {
       console.error(error);
+      toast.error(error.message || "something went wrong while creating");
     }
     finally{
       setIsCreating(false);
@@ -36,7 +32,6 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
       setAllowAnonymous(true);
       setExpiresAt("");
       setQuestions([{ questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }]);
-      setTimeout(() => {setIsCreated(false)}, 2000);
     }
   }
 
@@ -156,20 +151,6 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
         </button>
 
       </div>
-        {/* show message */}
-        {isCreated && 
-          <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-bold">
-              ✓
-            </div>
-            <p
-              className="text-sm text-emerald-300 font-medium"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Poll created successfully.
-            </p>
-          </div>
-        }
     </div>
   );
 }
