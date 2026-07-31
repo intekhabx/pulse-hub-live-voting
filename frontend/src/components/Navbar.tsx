@@ -1,15 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { DataContext } from "../Context/ContextApi";
 import { Link } from "@tanstack/react-router";
-import tokenStore from "../services/tokenStoreService";
-
-
-interface IUser {
-  email: string;
-  name: string;
-  role: string;
-  userId: string;
-}
 
 
 interface NavbarProps {
@@ -22,23 +13,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
   if(!context){
     throw new Error("dark and toggleTheme must be used within ContextApiProvider");
   }
-  const {dark, toggleTheme} = context;
-
-
-  const [user, setUser] = useState<IUser | null>(null);
-
-  useEffect(()=> {
-    const authenticateUser = ()=> {
-      const user = tokenStore.getUser();
-      const accessToken = tokenStore.getAccessToken();
-  
-      if(user && accessToken){
-        setUser(user);
-      }
-    }
-    authenticateUser();
-  }, [])
-
+  const {dark, toggleTheme, user} = context;
   
 
   const [scrolled, setScrolled] = useState(false);
@@ -66,7 +41,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
 
         {/* ── Logo ── */}
-        <a href="#" className="flex items-center gap-3 group select-none">
+        <a href="/" className="flex items-center gap-3 group select-none">
           <div className="relative w-9 h-9 flex-shrink-0">
             <div className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md group-hover:opacity-60 transition-opacity duration-300" />
             <div className="relative w-9 h-9 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
@@ -82,7 +57,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
             </div>
           </div>
           <span
-            className={`text-[1.35rem] font-black tracking-tight transition-colors duration-300 ${
+            className={`hidden md:flex text-[1.35rem] font-black tracking-tight transition-colors duration-300 ${
               dark ? "text-white" : "text-gray-900"
             }`}
             style={{ fontFamily: "'Syne', sans-serif" }}

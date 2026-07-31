@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef } from "react";
 import { DataContext } from "../Context/ContextApi";
+import { Link } from "@tanstack/react-router";
 
 
 const STATS = [
@@ -15,7 +16,7 @@ export default function Hero() {
   if(!context){
     throw new Error("dark must be used within ContextApiProvider");
   }
-  const {dark} = context;
+  const {dark, user} = context;
 
 
   const orbRef = useRef<HTMLDivElement>(null);
@@ -113,8 +114,8 @@ export default function Hero() {
 
       {/* ── CTAs ── */}
       <div className="relative z-10 mt-10 flex flex-col sm:flex-row items-center gap-4 animate-[fadeInUp_0.7s_ease_0.3s_forwards] opacity-0">
-        <a
-          href="#getstarted"
+        <Link
+          to={user ? "/dashboard" : "/register"}
           className="group inline-flex items-center gap-3 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-xl shadow-violet-500/30 hover:shadow-violet-500/50 transition-all duration-300 hover:-translate-y-1 active:translate-y-0"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
@@ -124,7 +125,7 @@ export default function Hero() {
               <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
-        </a>
+        </Link>
         <a
           href="#how-it-works"
           className={`inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-base font-semibold transition-all duration-200 border ${

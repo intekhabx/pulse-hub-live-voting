@@ -2,6 +2,8 @@ import { createContext, useCallback, useEffect, useRef, useState, type PropsWith
 import connectWS from "../socket";
 import responseService from "../services/responseService";
 import type { IDashboard } from "../components/Dashboard/assets/types";
+import type { IUser } from "../types";
+import tokenStore from "../services/tokenStoreService";
 
 
 export type ContextType = {
@@ -12,17 +14,41 @@ export type ContextType = {
   setDashboardData: React.Dispatch<React.SetStateAction<IDashboard | undefined>>,
   refreshDashboardData: () => Promise<void>,
   socketRef: React.RefObject<ReturnType<typeof connectWS> | null>;
+  user: IUser | null
 }
 
 export const DataContext = createContext<ContextType | null>(null);
 
 
 const ContextApiProvider = ({children}: PropsWithChildren) => {
-  const [dark, setDark] = useState<boolean>(true);
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    return saved ? saved === "dark" : true; // default
+  });
+  
+  const toggleTheme = () => {
+    setDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
-  const toggleTheme = ()=>{
-    setDark(!dark);
-  }
+
+  // check user is loggedIn or not to show buttons on page
+  const [user, setUser] = useState<IUser | null>(null);
+
+  useEffect(()=> {
+    const authenticateUser = ()=> {
+      const user = tokenStore.getUser();
+      const accessToken = tokenStore.getAccessToken();
+  
+      if(user && accessToken){
+        setUser(user);
+      }
+    }
+    authenticateUser();
+  }, [])
 
   // socket.io connection working
   const socketRef = useRef<ReturnType<typeof connectWS> | null>(null);
@@ -79,7 +105,7 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
 
 
   return (
-    <DataContext.Provider value={{dark, toggleTheme, dashboardData, dashboardLoading, setDashboardData, refreshDashboardData, socketRef}}>
+    <DataContext.Provider value={{dark, toggleTheme, dashboardData, dashboardLoading, setDashboardData, refreshDashboardData, socketRef, user}}>
       {children}
     </DataContext.Provider>
   )
