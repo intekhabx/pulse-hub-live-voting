@@ -9,6 +9,7 @@ import { Icons } from "./Icons";
 interface TopNavbarProps {
   collapsed: boolean;
   activeSection: string;
+  onMenuClick: () => void;
 }
 
 const sectionLabels: Record<string, string> = {
@@ -19,49 +20,63 @@ const sectionLabels: Record<string, string> = {
   create: "Create Poll",
 };
 
-export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
+export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarProps) {
   const user = tokenStore.getUser();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async()=>{
+  const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
       await authService.logout();
       localStorage.removeItem("dashboard-section");
       localStorage.removeItem("pulsehub-dashboard-section");
-      navigate({ to: "/"});
+      navigate({ to: "/" });
     } finally {
       setIsLoggingOut(false);
     }
-  }
+  };
 
   return (
     <header
-      className={`fixed top-0 right-0 z-30 h-16 flex items-center justify-between px-6 border-b border-white/[0.06] bg-[#0a0a12]/90 backdrop-blur-xl transition-all duration-300 ${
-        collapsed ? "left-16" : "left-56"
+      className={`fixed top-0 right-0 left-0 z-30 h-16 flex items-center justify-between px-4 sm:px-6 border-b border-white/[0.06] bg-[#0a0a12]/90 backdrop-blur-xl transition-all duration-300 ${
+        collapsed ? "lg:left-16" : "lg:left-56"
       }`}
     >
-      {/* Left: breadcrumb */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          PulseHub
-        </span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-          <path d="M9 18l6-6-6-6" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        <span
-          className="text-sm font-semibold text-gray-200"
-          style={{ fontFamily: "'DM Sans', sans-serif" }}
+      {/* Left: hamburger (mobile) + breadcrumb */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={onMenuClick}
+          aria-label="Open menu"
+          className="lg:hidden w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors border border-white/[0.07]"
         >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="hidden sm:flex items-center gap-2 min-w-0">
+          <span className="text-xs text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            PulseHub
+          </span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M9 18l6-6-6-6" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-sm font-semibold text-gray-200 truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            {sectionLabels[activeSection] || "Dashboard"}
+          </span>
+        </div>
+
+        {/* Mobile-only current section label (no breadcrumb, saves space) */}
+        <span className="sm:hidden text-sm font-semibold text-gray-200 truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {sectionLabels[activeSection] || "Dashboard"}
         </span>
       </div>
 
       {/* Right: search + bell + profile */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* Search */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-gray-500 hover:border-white/10 transition-colors cursor-pointer">
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-gray-500 hover:border-white/10 transition-colors cursor-pointer">
           {Icons.search}
           <span className="text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             Search polls…
@@ -75,35 +90,38 @@ export function TopNavbar({ collapsed, activeSection }: TopNavbarProps) {
         </div>
 
         {/* Notification bell */}
-        <button className="relative w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors border border-white/[0.07]">
+        <button className="relative w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors border border-white/[0.07] flex-shrink-0">
           {Icons.bell}
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-violet-500" />
         </button>
 
         {/* Profile */}
-        <div className="flex items-center gap-2.5 pl-3 border-l border-white/[0.07] group">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-violet-500/20">
+        <div className="flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-white/[0.07] group">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-violet-500/20 flex-shrink-0">
             {user?.name[0]}
           </div>
           <div className="hidden sm:block">
-            <div
-              className="text-xs font-semibold text-gray-300 leading-none"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
+            <div className="text-xs font-semibold text-gray-300 leading-none" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               {user?.name}
             </div>
-            <div
-              className="text-[10px] text-gray-600 mt-0.5"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
+            <div className="text-[10px] text-gray-600 mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               Pro Plan
             </div>
           </div>
-          <button 
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="text-gray-600 hover:text-rose-400 transition-colors ml-1 cursor-pointer disabled:cursor-not-allowed" title="Logout">
-            {isLoggingOut ? <svg className="animate-spin" width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg> : Icons.logout}
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="text-gray-600 hover:text-rose-400 transition-colors ml-1 cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
+            title="Logout"
+          >
+            {isLoggingOut ? (
+              <svg className="animate-spin" width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" />
+                <path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              Icons.logout
+            )}
           </button>
         </div>
       </div>

@@ -10,10 +10,6 @@ import { CreatePollSection } from "./Dashboard/pages/CreatePollSection";
 import { SettingsSection } from "./Dashboard/pages/SettingSection";
 import { PollDetailsSection } from "./Dashboard/pages/PollDetailsSection";
 
-
-
-
-
 interface DashboardProps {
   pollId?: string;
 }
@@ -31,6 +27,7 @@ export default function Dashboard({ pollId }: DashboardProps) {
     return savedSection && dashboardSections.includes(savedSection) ? savedSection : "overview";
   });
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     refreshDashboardData();
@@ -68,15 +65,18 @@ export default function Dashboard({ pollId }: DashboardProps) {
         setActive={handleSetActiveSection}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
       />
 
       <TopNavbar
         collapsed={collapsed}
         activeSection={displayedSection}
+        onMenuClick={() => setMobileOpen(true)}
       />
 
-      <main className={`pt-16 ${collapsed ? "ml-16" : "ml-56"}`}>
-        <div className="p-6">
+      <main className={`pt-16 transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-56"}`}>
+        <div className="p-4 sm:p-6">
           {pollId ? <PollDetailsSection pollId={pollId} /> : renderSection()}
         </div>
       </main>
