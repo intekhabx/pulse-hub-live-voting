@@ -72,12 +72,15 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
     })
 
     socketRef.current?.on("server:poll-updated", (data)=> {
-      console.log(data)
+      console.log(data);
+      setDashboardData((prev)=> prev ? {...prev, totalResponses: prev.totalResponses + 1} : prev);
     })
 
     socketRef.current?.on("server:poll-created", ()=> {
       refreshDashboardData();
     })
+    socketRef.current?.on("server:poll-deleted", refreshDashboardData);
+    
   }, [])
 
 

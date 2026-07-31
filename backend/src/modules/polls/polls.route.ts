@@ -18,6 +18,8 @@ router.get('/get-poll-analytics/:pollId', isLoggedIn, controller.getPollAnalytic
 
 router.get("/get-analytics-page-data", isLoggedIn, controller.getAnalyticsPageData);
 
+router.delete("/delete-poll/:pollId", isLoggedIn, controller.deletePollById);
+
 
 export default router;
   

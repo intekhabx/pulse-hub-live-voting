@@ -394,3 +394,24 @@ export const getAnalyticsPageData = asyncHandler(async(req: AuthRequest, res: Re
 
   ApiResponse.ok(res, "analytics page data fetched", {totalPolls: polls.length, anonymousPolls, pollResponses})
 })
+
+
+
+export const deletePollById = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:1 - find poll using the pollId
+  const {pollId} = req.params;
+
+  const poll = await pollModel.findById(pollId);
+  if(!poll){
+    throw ApiError.notFound("poll not found");
+  }
+
+  // step:2 - delete all responses of the poll and poll also
+  await responseModel.deleteMany({pollId});
+  await pollModel.findByIdAndDelete(pollId);
+
+  // step:3 - send io response to the client
+  io.emit("server:poll-deleted");
+
+  ApiResponse.ok(res, "Poll deleted successfully");
+})

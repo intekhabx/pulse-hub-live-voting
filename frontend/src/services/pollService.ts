@@ -46,6 +46,11 @@ const pollService = {
     const {data} = await api.get("/api/polls/get-analytics-page-data");
     return data;
   },
+
+  async deletePollById(pollId: string){
+    const {data} = await api.delete(`/api/polls/delete-poll/${pollId}`);
+    return data;
+  },
   
 }
 

@@ -7,6 +7,7 @@ import pollService from "../../../services/pollService";
 import type { IPollResponse, Poll } from "../assets/types";
 import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
+import toast from "react-hot-toast";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -71,6 +72,29 @@ export function PollsSection({ setActive }: PollsSectionProps) {
     setCopiedPollId(pollId);
     setTimeout(() => setCopiedPollId(null), 1800);
   };
+
+  // handleDelete for deleting the polls
+  const handleDelete = async(pollId: string)=> {
+    const ok = confirm("do you want to delete this poll");
+    if(!ok){
+      return;
+    }
+
+    try {
+      await pollService.deletePollById(pollId);
+      toast.success("Poll Deleted Successfully");
+
+      // remove deleted poll from the pollsection
+      setPolls((prev = []) =>
+        prev.filter((poll) => poll._id !== pollId)
+      );
+    } 
+    catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "something went wrong");
+    }
+  }
+
 
   const formatExpiry = (expiresAt: string) =>
     new Date(expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -206,6 +230,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       </button>
 
                       <button
+                        onClick={()=> handleDelete(poll._id)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         title="Delete"
                       >
@@ -377,6 +402,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       </button>
 
                       <button
+                        onClick={()=> handleDelete(poll._id)}
                         className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-rose-500/[0.06] hover:text-rose-400"
                         style={{ fontFamily: "'DM Sans', sans-serif" }}
                         aria-label="Delete poll"
