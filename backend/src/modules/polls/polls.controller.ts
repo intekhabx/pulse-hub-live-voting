@@ -1,7 +1,7 @@
 import asyncHandler from "../../utils/async-handler.middleware";
 import type { Request, Response } from "express";
 import pollModel from "./polls.model";
-import type { AuthRequest } from "../../types/index.types";
+import type { AuthRequest, IRecentActivityData } from "../../types/index.types";
 import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
@@ -24,7 +24,11 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     createdBy: req.user?.id,
   })
 
-  // step:3 - send io response to the frontend
+  // step:3 add poll is created in the recent activity
+  const userId = req.user?.id.toString()!;
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "Poll Created", icon: "create"});
+
+  // step:4 - send io response to the frontend
   io.emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
@@ -277,7 +281,7 @@ const updateRedisPollAnalyticsData = async(key: string, answers:{questionId: str
   })
   
   //step:5 - saving the updated analyticsData
-  await redis.set(key, JSON.stringify(analyticsData));
+  await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
 
   return analyticsData;
 }
@@ -348,7 +352,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   if(!analyticsData){
     // now analyticData is not present in redis then fetch from db and store in redis also
     analyticsData = await getPollDetailedAnalytics(poll._id);
-    await redis.set(key, JSON.stringify(analyticsData));
+    await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
   
   // step:8- send io response to the poll creator with the pollAnalyticsData
@@ -410,8 +414,53 @@ export const deletePollById = asyncHandler(async (req: AuthRequest, res: Respons
   await responseModel.deleteMany({pollId});
   await pollModel.findByIdAndDelete(pollId);
 
-  // step:3 - send io response to the client
+  // step:3 - delete pollAnalytics from redis
+  await redis.del(`poll:${pollId}`)
+
+  // step:4 - add poll is deleted in the recent activity
+  const userId = req?.user?.id.toString()!;
+  await addRecentActivity(userId, {pollId: poll._id.toString() ,pollTitle: poll.title, message: "Poll Deleted", icon: "delete"});
+
+  // step:5 - send io response to the client
   io.emit("server:poll-deleted");
 
   ApiResponse.ok(res, "Poll deleted successfully");
+})
+
+
+
+// addRecentActivity helper function
+const addRecentActivity = async (userId: string, activity: IRecentActivityData) => {
+  const key = `recent-activity:user:${userId}`;
+
+  await redis.lpush(key, JSON.stringify({
+    ...activity,
+    time: Date.now(),
+  }));
+
+  // Keep only latest 10
+  await redis.ltrim(key, 0, 9);
+
+  // Optional: expire after 30 days
+  // await redis.expire(key, 60 * 60 * 24 * 30);
+}
+
+
+
+export const getRecentActivity = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:1- extract userId from loggedIn user
+  const userId = req?.user?.id;
+
+  // step:2 - find recent activity from the redis
+  const key = `recent-activity:user:${userId}`
+  const recentActivity = await redis.lrange(key, 0, -1); // all activity data
+
+  if(recentActivity.length === 0){
+    throw ApiError.notFound("recent activity not found");
+  }
+
+  // step:3 - lrange gives array of string(json); so parse every json to object
+  const recentActivities = recentActivity.map((item)=> JSON.parse(item));
+
+  ApiResponse.ok(res, "recent activity fetched successfully", recentActivities);
 })

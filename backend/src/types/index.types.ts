@@ -22,3 +22,11 @@ export interface AuthRequest extends Request {
     role: string,
   }
 }
+
+
+export interface IRecentActivityData {
+  pollId: string;
+  pollTitle: string;
+  message: string;
+  icon: "response" | "publish" | "expire" | "create" | "delete";
+}

@@ -51,6 +51,11 @@ const pollService = {
     const {data} = await api.delete(`/api/polls/delete-poll/${pollId}`);
     return data;
   },
+
+  async getRecentActivity(){
+    const {data} = await api.get("/api/polls/get-recent-activity");
+    return data;
+  }
   
 }
 

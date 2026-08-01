@@ -19,12 +19,12 @@ export interface IPollResponse {
   expiresAt: string;
 }
 
-export interface ActivityItem {
-  id: number;
-  poll: string;
-  action: string;
+export interface IActivityItem {
+  pollId: number;
+  pollTitle: string;
+  message: string;
+  icon: "response" | "publish" | "expire" | "create" | "delete";
   time: string;
-  icon: string;
 }
 
 export interface IDashboard {

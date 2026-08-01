@@ -40,6 +40,14 @@ export function ActivityIcon({ type }: ActivityIconProps) {
         </svg>
       ),
     },
+    delete: {
+      bg: "bg-red-500/20 text-red-400",
+      icon: (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+          <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+    },
   };
 
   const { bg, icon } = map[type] || map.create;

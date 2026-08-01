@@ -1,5 +1,4 @@
-import { useContext } from "react";
-import { RECENT_ACTIVITY } from "../assets/mockdata";
+import { useContext, useEffect, useState } from "react";
 import { StatCard } from "../StatCard";
 import { StatusBadge } from "../StatusBadge";
 import { ActivityIcon } from "../ActivityIcon";
@@ -7,6 +6,9 @@ import { Icons } from "../Icons";
 import tokenStore from "../../../services/tokenStoreService";
 import { DataContext } from "../../../Context/ContextApi";
 import { Loader } from "../../Loader";
+import pollService from "../../../services/pollService";
+import type { IActivityItem } from "../assets/types";
+import { getTimeAgo } from "../../../utils/getTimeAge";
 
 // ── Overview Section ───────────────────────────────────────────────────────
 
@@ -27,6 +29,18 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
     return <Loader label="Loading dashboard…" className="min-h-[28rem]" />;
   }
  
+
+  // recent activity 
+  const [recentActivity, setRecentActivity] = useState<IActivityItem[]>([]);
+  useEffect(() => {
+    const getRecentActivity = async()=> {
+      const res = await pollService.getRecentActivity();
+      setRecentActivity(res?.data);
+    }
+    getRecentActivity();
+  }, [])
+
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -159,31 +173,44 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
             Recent Activity
           </h2>
           <div className="space-y-3">
-            {RECENT_ACTIVITY.map((item) => (
-              <div key={item.id} className="flex items-start gap-3">
-                <ActivityIcon type={item.icon} />
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-xs font-medium text-gray-300 truncate"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {item.action}
-                  </p>
-                  <p
-                    className="text-[11px] text-gray-600 truncate"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {item.poll}
-                  </p>
-                  <p
-                    className="text-[10px] text-gray-700 mt-0.5"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {item.time}
-                  </p>
+            {recentActivity?.length > 0 ? (
+              recentActivity.map((item) => (
+                <div key={item.pollId} className="flex items-start gap-3">
+                  <ActivityIcon type={item.icon} />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-xs font-medium text-gray-300 truncate"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {item.message}
+                    </p>
+
+                    <p
+                      className="text-[11px] text-gray-600 truncate"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {item.pollTitle}
+                    </p>
+
+                    <p
+                      className="text-[10px] text-gray-700 mt-0.5"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {getTimeAgo(Number(item.time))}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center py-6">
+                <p
+                  className="text-sm text-gray-500"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  No Recent Activity
+                </p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

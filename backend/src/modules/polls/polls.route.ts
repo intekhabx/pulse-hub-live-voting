@@ -20,6 +20,8 @@ router.get("/get-analytics-page-data", isLoggedIn, controller.getAnalyticsPageDa
 
 router.delete("/delete-poll/:pollId", isLoggedIn, controller.deletePollById);
 
+router.get("/get-recent-activity", isLoggedIn, controller.getRecentActivity);
+
 
 export default router;
   
