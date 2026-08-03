@@ -8,6 +8,7 @@ import responseModel from "../response/response.model";
 import { io } from "../../server";
 import type mongoose from "mongoose";
 import redis from "../../config/redis.config";
+import { pollExpiryQueue } from "../../config/bullmq.config";
 
 
 export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
@@ -26,9 +27,27 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
 
   // step:3 add poll is created in the recent activity
   const userId = req.user?.id.toString()!;
-  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "Poll Created", icon: "create"});
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
 
-  // step:4 - send io response to the frontend
+  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
+  if(expiryDelayInMiliSecond > 0){
+    await pollExpiryQueue.add("poll-expiry", 
+      {
+        pollId: poll._id,
+        pollTitle: title,
+        userId: req?.user?.id,
+      },
+      {
+        jobId: `poll-expiry-${poll._id.toString()}`, //: colon ka use nhi krna hota h jobId me
+        delay: expiryDelayInMiliSecond,
+        removeOnComplete: true,
+        attempts: 3
+      }
+    )
+  }
+
+  // step:5 - send io response to the frontend
   io.emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
@@ -430,7 +449,7 @@ export const deletePollById = asyncHandler(async (req: AuthRequest, res: Respons
 
 
 // addRecentActivity helper function
-const addRecentActivity = async (userId: string, activity: IRecentActivityData) => {
+export const addRecentActivity = async (userId: string, activity: IRecentActivityData) => {
   const key = `recent-activity:user:${userId}`;
 
   await redis.lpush(key, JSON.stringify({
@@ -438,8 +457,8 @@ const addRecentActivity = async (userId: string, activity: IRecentActivityData) 
     time: Date.now(),
   }));
 
-  // Keep only latest 10
-  await redis.ltrim(key, 0, 9);
+  // Keep only latest 7 activity
+  await redis.ltrim(key, 0, 6);
 
   // Optional: expire after 30 days
   // await redis.expire(key, 60 * 60 * 24 * 30);

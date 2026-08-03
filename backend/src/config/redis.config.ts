@@ -7,8 +7,9 @@ if(!REDIS_URL){
 
 const redis = new Redis(REDIS_URL, {
   tls: {
-    servername: REDIS_URL.split("@")[1] || "pulsehub-post-spark.cloud.layerbase.dev"
-  }
+    servername: REDIS_URL.split("@")[1] || "pulsehub-post-spark.cloud.layerbase.dev",
+  },
+  maxRetriesPerRequest: null,
 });
 
 

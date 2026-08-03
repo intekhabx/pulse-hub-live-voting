@@ -3,6 +3,7 @@ import http from 'node:http';
 import {Server} from 'socket.io';
 import { createApplication } from './app';
 import dbConnection from './config/db.config';
+import "./workers/pollExpiry.worker";
 
 
 export const io = new Server();
