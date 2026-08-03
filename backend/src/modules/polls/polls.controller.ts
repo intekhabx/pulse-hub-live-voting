@@ -364,7 +364,11 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     })
   }
 
-  // step:7 check the redis DB that polAnalyticsData is present or not and if present then update it
+  // step:7 - now add newResponseReceived in recentActivity of the poll creator
+  const pollOwner = poll.createdBy?.toString()!;
+  await addRecentActivity(pollOwner, {pollId: poll._id.toString(), pollTitle: poll.title, message: "New Response Received", icon: "response"});
+
+  // step:8 - check the redis DB that polAnalyticsData is present or not and if present then update it
   const key = `poll:${poll._id}`;
   let analyticsData = await updateRedisPollAnalyticsData(key, answers, req?.user?.id?.toString());
 
@@ -374,7 +378,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
   
-  // step:8- send io response to the poll creator with the pollAnalyticsData
+  // step:9 - send io response to the poll creator with the pollAnalyticsData
   io.emit("server:poll-updated", analyticsData);
 
   ApiResponse.ok(res, "poll submitted successfully");
