@@ -9,12 +9,14 @@ import { AnalyticsSection } from "./Dashboard/pages/AnalyticsSection";
 import { CreatePollSection } from "./Dashboard/pages/CreatePollSection";
 import { SettingsSection } from "./Dashboard/pages/SettingSection";
 import { PollDetailsSection } from "./Dashboard/pages/PollDetailsSection";
+import { ViewAndEditSection } from "./Dashboard/pages/ViewAndEditPollSection";
 
 interface DashboardProps {
   pollId?: string;
+  editMode?: boolean;
 }
 
-export default function Dashboard({ pollId }: DashboardProps) {
+export default function Dashboard({ pollId, editMode }: DashboardProps) {
   const navigate = useNavigate();
   const context = useContext(DataContext);
   if (!context) {
@@ -56,6 +58,14 @@ export default function Dashboard({ pollId }: DashboardProps) {
     }
   };
 
+  
+  const renderPollPage = (id: string) =>
+    editMode ? (
+      <ViewAndEditSection pollId={id} setActive={handleSetActiveSection} />
+    ) : (
+      <PollDetailsSection pollId={id} />
+    );
+
   const displayedSection = pollId ? "polls" : activeSection;
 
   return (
@@ -77,7 +87,7 @@ export default function Dashboard({ pollId }: DashboardProps) {
 
       <main className={`pt-16 transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-56"}`}>
         <div className="p-4 sm:p-6">
-          {pollId ? <PollDetailsSection pollId={pollId} /> : renderSection()}
+          {pollId ? renderPollPage(pollId) : renderSection()}
         </div>
       </main>
     </div>

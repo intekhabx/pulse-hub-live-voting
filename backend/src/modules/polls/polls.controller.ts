@@ -11,83 +11,26 @@ import redis from "../../config/redis.config";
 import { pollExpiryQueue } from "../../config/bullmq.config";
 
 
-export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
-  // step:1 - extract poll details from body
-  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId: string, pollTitle: string, userId: string)=> {
 
-  // step:2 - create poll
-  const poll = await pollModel.create({
-    title,
-    description,
-    allowAnonymous,
-    expiresAt,
-    questions,
-    createdBy: req.user?.id,
-  })
-
-  // step:3 add poll is created in the recent activity
-  const userId = req.user?.id.toString()!;
-  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
-
-  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
-  const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
-  if(expiryDelayInMiliSecond > 0){
-    await pollExpiryQueue.add("poll-expiry", 
-      {
-        pollId: poll._id,
-        pollTitle: title,
-        userId: req?.user?.id,
-      },
-      {
-        jobId: `poll-expiry-${poll._id.toString()}`, //: colon ka use nhi krna hota h jobId me
-        delay: expiryDelayInMiliSecond,
-        removeOnComplete: true,
-        attempts: 3
-      }
-    )
+  if(expiryDelayInMiliSecond <= 0){
+    return;
   }
 
-  // step:5 - send io response to the frontend
-  io.emit("server:poll-created");
-
-  ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
-})
-
-
-
-export const getMyPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
-  // step:1 - find all polls in DB
-  const polls = await pollModel.find({createdBy: req.user?.id}).sort({createdAt: -1});
-  if(!polls){
-    throw ApiError.notFound("polls not found");
-  }
-
-  // step:2 creating an array to store the response
-  const pollResponse = [];
-
-  // step:3 find all responses of every polls
-  for (const poll of polls) {
-    const res = await responseModel.find({pollId: poll._id});
-    pollResponse.push({pollId: poll._id, totalResponse: res.length, expiresAt: poll.expiresAt})
-  }
-
-  ApiResponse.ok(res, "polls fetched successfully", {polls, pollResponse});
-})
-
-
-
-export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
-  // step:1 - extract pollId from params
-  const pollId = req.params?.pollId;
-
-  const poll = await pollModel.findById(pollId);
-  if(!poll){
-    throw ApiError.notFound("Poll not found");
-  }
-
-  ApiResponse.ok(res, "poll fetched successfully", poll);
-})
-
+  await pollExpiryQueue.add("poll-expiry", 
+    {
+      pollId,
+      pollTitle,
+      userId
+    },
+    {
+      jobId: `poll-expiry-${pollId}`, //: colon ka use nhi krna hota h jobId me
+      delay: expiryDelayInMiliSecond,
+      removeOnComplete: true,
+      attempts: 3
+    }
+  )
+}
 
 
 const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
@@ -306,6 +249,134 @@ const updateRedisPollAnalyticsData = async(key: string, answers:{questionId: str
 }
 
 
+export const addRecentActivity = async (userId: string, activity: IRecentActivityData) => {
+  const key = `recent-activity:user:${userId}`;
+
+  await redis.lpush(key, JSON.stringify({
+    ...activity,
+    time: Date.now(),
+  }));
+
+  // Keep only latest 7 activity
+  await redis.ltrim(key, 0, 6);
+
+  // Optional: expire after 30 days
+  // await redis.expire(key, 60 * 60 * 24 * 30);
+}
+
+
+
+
+
+export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
+  // step:1 - extract poll details from body
+  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+
+  // step:2 - create poll
+  const poll = await pollModel.create({
+    title,
+    description,
+    allowAnonymous,
+    expiresAt,
+    questions,
+    createdBy: req.user?.id,
+  })
+
+  // step:3 add poll is created in the recent activity
+  const userId = req.user?.id.toString()!;
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
+
+  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
+  if(expiryDelayInMiliSecond > 0){
+    await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), title, userId);
+  }
+
+  // step:5 - send io response to the frontend
+  io.emit("server:poll-created");
+
+  ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
+})
+
+
+
+export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Response)=> {
+  // step:1 - extract the edited data from body and pollId from params
+  const {title, description, expiresAt, questions, allowAnonymous} = req.body;
+  const {pollId} = req?.params;
+
+  // step:2 - find the poll using the pollId and update it
+  const poll = await pollModel.findByIdAndUpdate(pollId, {
+    title,
+    description,
+    expiresAt,
+    questions,
+    allowAnonymous,
+  }, {returnDocument: "after"}); //{new: true} is depriciated
+
+  if(!poll){
+    throw ApiError.notFound("poll doesn't found or exists");
+  }
+
+  // step:3 - (update) remove the old pollAnalytics in the redis
+  await redis.del(`poll:${pollId}`);
+
+  // step:4 - find and remove the old pollExpiry job in the bullmq queue
+  const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+  if(job){
+    await job.remove();
+  }
+
+  // step:5 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
+  const userId = req?.user?.id.toString()!;
+  const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
+  if(expiresAt && expiryDelayInMiliSecond > 0){
+    await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
+  }
+
+  // step:6 - add pollUpdated in recent_activity in REDIS
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Updated", icon: "update"});
+
+  ApiResponse.ok(res, "poll updated successfully");
+})
+
+
+
+export const getMyPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
+  // step:1 - find all polls in DB
+  const polls = await pollModel.find({createdBy: req.user?.id}).sort({createdAt: -1});
+  if(!polls){
+    throw ApiError.notFound("polls not found");
+  }
+
+  // step:2 creating an array to store the response
+  const pollResponse = [];
+
+  // step:3 find all responses of every polls
+  for (const poll of polls) {
+    const res = await responseModel.find({pollId: poll._id});
+    pollResponse.push({pollId: poll._id, totalResponse: res.length, expiresAt: poll.expiresAt})
+  }
+
+  ApiResponse.ok(res, "polls fetched successfully", {polls, pollResponse});
+})
+
+
+
+export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
+  // step:1 - extract pollId from params
+  const pollId = req.params?.pollId;
+
+  const poll = await pollModel.findById(pollId);
+  if(!poll){
+    throw ApiError.notFound("Poll not found");
+  }
+
+  ApiResponse.ok(res, "poll fetched successfully", poll);
+})
+
+
+
 export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   // step:1 - extract answers from body
   const {answers} = req.body;
@@ -444,29 +515,17 @@ export const deletePollById = asyncHandler(async (req: AuthRequest, res: Respons
   const userId = req?.user?.id.toString()!;
   await addRecentActivity(userId, {pollId: poll._id.toString() ,pollTitle: poll.title, message: "Poll Deleted", icon: "delete"});
 
-  // step:5 - send io response to the client
+  // step:5 - remove pollExpiry in the queue that can run in future
+  const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+  if(job){
+    await job.remove();
+  }
+
+  // step:6 - send io response to the client
   io.emit("server:poll-deleted");
 
   ApiResponse.ok(res, "Poll deleted successfully");
 })
-
-
-
-// addRecentActivity helper function
-export const addRecentActivity = async (userId: string, activity: IRecentActivityData) => {
-  const key = `recent-activity:user:${userId}`;
-
-  await redis.lpush(key, JSON.stringify({
-    ...activity,
-    time: Date.now(),
-  }));
-
-  // Keep only latest 7 activity
-  await redis.ltrim(key, 0, 6);
-
-  // Optional: expire after 30 days
-  // await redis.expire(key, 60 * 60 * 24 * 30);
-}
 
 
 

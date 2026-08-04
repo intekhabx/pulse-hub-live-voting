@@ -15,6 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VotesPollIdRouteImport } from './routes/votes/$pollId'
 import { Route as DashboardPollPollIdRouteImport } from './routes/dashboard/poll/$pollId'
+import { Route as DashboardPollEditPollIdRouteImport } from './routes/dashboard/poll-edit/$pollId'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -46,6 +47,11 @@ const DashboardPollPollIdRoute = DashboardPollPollIdRouteImport.update({
   path: '/poll/$pollId',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardPollEditPollIdRoute = DashboardPollEditPollIdRouteImport.update({
+  id: '/poll-edit/$pollId',
+  path: '/poll-edit/$pollId',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/votes/$pollId': typeof VotesPollIdRoute
+  '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/votes/$pollId'
+    | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/votes/$pollId'
+    | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/votes/$pollId'
+    | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
   fileRoutesById: FileRoutesById
 }
@@ -151,14 +163,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPollPollIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/poll-edit/$pollId': {
+      id: '/dashboard/poll-edit/$pollId'
+      path: '/poll-edit/$pollId'
+      fullPath: '/dashboard/poll-edit/$pollId'
+      preLoaderRoute: typeof DashboardPollEditPollIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
 interface DashboardRouteChildren {
+  DashboardPollEditPollIdRoute: typeof DashboardPollEditPollIdRoute
   DashboardPollPollIdRoute: typeof DashboardPollPollIdRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardPollEditPollIdRoute: DashboardPollEditPollIdRoute,
   DashboardPollPollIdRoute: DashboardPollPollIdRoute,
 }
 

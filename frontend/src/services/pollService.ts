@@ -1,24 +1,17 @@
+import type { ICreatePoll, IUpdatePoll } from "../types";
 import { api } from "./apiService"
 
-interface ICreatePoll {
-  title: string;
-  description: string;
-  expiresAt: string;
-  questions: {
-      questionText: string;
-      required: boolean;
-      options:
-        {
-          optionText: string
-        }[];
-    }[];
-  allowAnonymous: boolean,
-}
+
 
 const pollService = {
 
   async createPoll({title, description, expiresAt, questions, allowAnonymous}: ICreatePoll){
     const {data} = await api.post('/api/polls/create-poll', {title, description, expiresAt, questions, allowAnonymous})
+    return data;
+  },
+
+  async updatePoll(pollId: string, {title, description, expiresAt, questions, allowAnonymous}: IUpdatePoll){
+    const {data} = await api.patch(`/api/polls/update-poll/${pollId}`, {title, description, expiresAt, questions, allowAnonymous});
     return data;
   },
 

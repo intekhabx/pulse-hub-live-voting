@@ -28,5 +28,5 @@ export interface IRecentActivityData {
   pollId: string;
   pollTitle: string;
   message: string;
-  icon: "response" | "publish" | "expire" | "create" | "delete";
+  icon: "response" | "publish" | "expire" | "create" | "delete" | "update";
 }

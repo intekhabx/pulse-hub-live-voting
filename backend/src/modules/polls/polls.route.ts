@@ -2,11 +2,15 @@ import express from "express";
 import { isLoggedIn } from "../auth/auth.middleware";
 import * as controller from './polls.controller';
 import { checkAuthenticatedAndAnonymousUser } from "./polls.middleware";
+import validate from "../../middleware/validate.middleware";
+import { createPollDto, updatePollDto } from "./polls.dto";
 
 const router = express.Router();
 
 // routes
-router.post('/create-poll', isLoggedIn, controller.createPolls);
+router.post('/create-poll', isLoggedIn, validate(createPollDto), controller.createPolls);
+
+router.patch('/update-poll/:pollId', isLoggedIn, validate(updatePollDto), controller.editAndUpdatePoll);
 
 router.get('/get-mypolls', isLoggedIn, controller.getMyPolls);
 

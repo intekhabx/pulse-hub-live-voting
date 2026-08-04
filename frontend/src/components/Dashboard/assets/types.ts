@@ -23,7 +23,7 @@ export interface IActivityItem {
   pollId: number;
   pollTitle: string;
   message: string;
-  icon: "response" | "publish" | "expire" | "create" | "delete";
+  icon: "response" | "publish" | "expire" | "create" | "delete" | "update";
   time: string;
 }
 

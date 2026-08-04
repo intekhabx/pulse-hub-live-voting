@@ -175,7 +175,7 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
           <div className="space-y-3">
             {recentActivity?.length > 0 ? (
               recentActivity.map((item) => (
-                <div key={item.pollId} className="flex items-start gap-3">
+                <div key={item.pollId+"abc"} className="flex items-start gap-3">
                   <ActivityIcon type={item.icon} />
                   <div className="flex-1 min-w-0">
                     <p

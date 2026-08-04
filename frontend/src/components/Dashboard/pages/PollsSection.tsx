@@ -16,6 +16,24 @@ interface PollsSectionProps {
 }
 
 type FilterType = "all" | "active" | "expired" | "draft";
+const filterState = {
+  all: {
+    title: "No polls created yet",
+    description: "Get started by creating your first poll."
+  },
+  active: {
+    title: "No active polls",
+    description: "You don't have any active polls at the moment."
+  },
+  expired: {
+    title: "No expired polls",
+    description: "You don't have any expired polls yet."
+  },
+  draft: {
+    title: "No draft polls",
+    description: "You don't have any draft polls yet."
+  }
+}
 
 export function PollsSection({ setActive }: PollsSectionProps) {
   const [polls, setPolls] = useState<Poll[]>();
@@ -58,6 +76,14 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   }, []);
 
   const navigate = useNavigate();
+
+  const openViewAndEditPage = async(pollId: string) => {
+    navigate({
+      to: "/dashboard/poll-edit/$pollId",
+      params: {pollId},
+      search: {mode: "edit"}
+    });
+  };
 
   const openPollPage = async (pollId: string) => {
     navigate({
@@ -150,10 +176,10 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                 </svg>
               </div>
               <p className="text-lg font-semibold text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
-                No polls created yet
+                {filterState[filter].title}
               </p>
               <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                Get started by creating your first poll
+                {filterState[filter].description}
               </p>
             </div>
           ) : (
@@ -206,11 +232,19 @@ export function PollsSection({ setActive }: PollsSectionProps) {
 
                     <div className="col-span-2 flex items-center justify-end gap-2">
                       <button
-                        onClick={() => openPollPage(poll._id)}
+                        onClick={() => openViewAndEditPage(poll._id)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
                         title="View"
                       >
                         {Icons.eye}
+                      </button>
+
+                      <button
+                        onClick={() => openPollPage(poll._id)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                        title="Analytics"
+                      >
+                        {Icons.analytics}
                       </button>
 
                       <button
@@ -370,15 +404,25 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-3 divide-x divide-white/[0.05] border-t border-white/[0.05]">
+                    <div className="grid grid-cols-4 divide-x divide-white/[0.05] border-t border-white/[0.05]">
                       <button
-                        onClick={() => openPollPage(poll._id)}
+                        onClick={() => openViewAndEditPage(poll._id)}
                         className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-violet-500/[0.06] hover:text-violet-400"
                         style={{ fontFamily: "'DM Sans', sans-serif" }}
                         aria-label="View poll"
                       >
                         {Icons.eye}
                         View
+                      </button>
+
+                      <button
+                        onClick={() => openPollPage(poll._id)}
+                        className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-orange-500/[0.06] hover:text-orange-400"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                        aria-label="Analytics poll"
+                      >
+                        {Icons.analytics}
+                        Analytics
                       </button>
 
                       <button
