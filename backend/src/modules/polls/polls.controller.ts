@@ -6,7 +6,7 @@ import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
 import { io } from "../../server";
-import type mongoose from "mongoose";
+import mongoose from "mongoose";
 import redis from "../../config/redis.config";
 import { pollExpiryQueue } from "../../config/bullmq.config";
 
@@ -545,4 +545,56 @@ export const getRecentActivity = asyncHandler(async (req: AuthRequest, res: Resp
   const recentActivities = recentActivity.map((item)=> JSON.parse(item));
 
   ApiResponse.ok(res, "recent activity fetched successfully", recentActivities);
+})
+
+
+
+export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Response)=> {
+  // step:1 - extract the pollId from params
+  const {pollId} = req?.params;
+
+  // step:2 - find the poll using pollId in the DB
+  const poll = await pollModel.findById(pollId);
+  if(!poll){
+    throw ApiError.notFound("poll not found or doesn't exists");
+  }
+
+  // step:3 - check poll is already published or not
+  if(poll.isPublished){
+    ApiResponse.ok(res, "PollResult already published on same link");
+  }
+
+  // step:4 - make poll result published
+  poll.isPublished = true;
+  await poll.save();
+
+  // step:5 - add pollPublished in recent_activity
+  const userId = req?.user?.id.toString()!;
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Published on same link", icon: "publish"});
+
+  ApiResponse.ok(res, "Poll result published on same link");
+})
+
+
+
+export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Request, res: Response)=> {
+  // step:1 - extract pollId from params
+  const {pollId} = req?.params;
+
+  // step:2 - check the redis DB that polAnalyticsData is present or not
+  const key = `poll:${pollId}`;
+  const rawData = await redis.get(key);
+  let analyticsData = rawData && JSON.parse(rawData);
+
+  // step:3 - if analyticsData is not present in redis then fetch from DB
+  if(!analyticsData){
+    // now analyticData is not present in redis then fetch from db and store in redis also
+    analyticsData = await getPollDetailedAnalytics(new mongoose.Types.ObjectId(pollId?.toString()));
+    await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
+  }
+  
+  // step:4 extaract only showable data from analyticsData
+  const votesPercentages = analyticsData.analytics; //arrayofobject of question and option
+
+  ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);
 })

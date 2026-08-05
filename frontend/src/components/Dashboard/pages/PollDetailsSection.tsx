@@ -4,6 +4,7 @@ import type { IPollAnalytics } from "../assets/types";
 import { StatusBadge } from "../StatusBadge";
 import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
+import toast from "react-hot-toast";
 
 interface PollDetailsSectionProps {
   pollId: string;
@@ -32,6 +33,19 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
     }
     getPoll();
   }, [pollId]);
+
+
+  const handlePublish = async () => {
+    try {
+      const res = await pollService.publishPollResult(pollId);
+      toast.success(res.message || "Poll published");
+    } 
+    catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Something went wrong while publishing");
+    }
+  };
+
 
   if (!poll) {
     return <Loader label="Loading poll details…" className="min-h-[28rem]" />;
@@ -80,11 +94,21 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           )}
         </div>
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-400/20 bg-gradient-to-r from-teal-500 via-teal-500 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 ring-1 ring-teal-400/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-teal-500/40 active:scale-95 cursor-pointer whitespace-nowrap flex-shrink-0"
+          onClick={handlePublish}
+          disabled={poll.isPublished}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
+            poll.isPublished
+              ? "cursor-not-allowed border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+              : "cursor-pointer border border-violet-400/20 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25 ring-1 ring-violet-400/10 hover:-translate-y-0.5 hover:shadow-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 active:scale-95"
+          }`}
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          Publish Your Poll
+          {poll.isPublished ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )}
+          {!poll.isPublished ? "Publish Result" : "Published"}
         </button>
       </div>
 

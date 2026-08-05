@@ -1,11 +1,10 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export interface Poll {
+export interface IPoll {
   _id: string;
   title: string;
   // status: "active" | "expired" | "draft";
-  // responses: number;
-  questions: Question[];
+  questions: IQuestion[];
   description: string;
   createdAt: string;
   expiresAt: string;
@@ -32,22 +31,34 @@ export interface IDashboard {
   totalResponses: string;
   activePolls: string;
   publishedResult: string;
-  polls: Poll[];
+  polls: IPoll[];
 }
 
-export interface Question {
+export interface IQuestion {
   _id: string;
   questionText: string;
   required: boolean;
-  options: Option[];
+  options: IOption[];
 }
 
-export interface Option {
+export interface IOption {
   _id: string;
   optionText: string;
   votes: number;
 }
 
+
+export interface IPublishedPollQuestionsAnalytics {
+  _id: string;
+  question: string;
+  totalVotes: string;
+  options: { //option is an array of object under analytics
+    optionId: string;
+    optionText: string;
+    votes: number;
+    percentage: number;
+  }[]
+}
 
 export interface IPollAnalytics {
   title: string;

@@ -48,7 +48,17 @@ const pollService = {
   async getRecentActivity(){
     const {data} = await api.get("/api/polls/get-recent-activity");
     return data;
-  }
+  },
+
+  async publishPollResult(pollId: string){
+    const {data} = await api.post(`/api/polls/publish-poll/${pollId}`);
+    return data;
+  },
+
+  async getPublishedPollQuestionsAnalytics(pollId: string){
+    const {data} = await api.get(`/api/polls/get-published-poll-analytics/${pollId}`);
+    return data;
+  },
   
 }
 

@@ -1,10 +1,10 @@
 import { getPollStatus } from "../../utils/getPollStatus";
-import type { Poll } from "./assets/types";
+import type { IPoll } from "./assets/types";
 
 // ── Status Badge ───────────────────────────────────────────────────────────
 
 interface StatusBadgeProps {
-  expiresAt: Poll["expiresAt"];
+  expiresAt: IPoll["expiresAt"];
 }
 
 export function StatusBadge({ expiresAt }: StatusBadgeProps) {

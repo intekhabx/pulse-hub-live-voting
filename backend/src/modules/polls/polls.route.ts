@@ -26,6 +26,10 @@ router.delete("/delete-poll/:pollId", isLoggedIn, controller.deletePollById);
 
 router.get("/get-recent-activity", isLoggedIn, controller.getRecentActivity);
 
+router.post("/publish-poll/:pollId", isLoggedIn, controller.publishPollResult);
+
+router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQuestionsAnalytics)
+
 
 export default router;
   

@@ -4,7 +4,7 @@ import { Icons } from "../Icons";
 import { getPollStatus } from "../../../utils/getPollStatus";
 import { useNavigate } from "@tanstack/react-router";
 import pollService from "../../../services/pollService";
-import type { IPollResponse, Poll } from "../assets/types";
+import type { IPollResponse, IPoll } from "../assets/types";
 import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
 import toast from "react-hot-toast";
@@ -36,7 +36,7 @@ const filterState = {
 }
 
 export function PollsSection({ setActive }: PollsSectionProps) {
-  const [polls, setPolls] = useState<Poll[]>();
+  const [polls, setPolls] = useState<IPoll[]>();
   const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>();
   const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +85,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
     });
   };
 
-  const openPollPage = async (pollId: string) => {
+  const openPollAnalyticsPage = async (pollId: string) => {
     navigate({
       to: "/dashboard/poll/$pollId",
       params: { pollId },
@@ -233,15 +233,15 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                     <div className="col-span-2 flex items-center justify-end gap-2">
                       <button
                         onClick={() => openViewAndEditPage(poll._id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors cursor-pointer"
                         title="View"
                       >
                         {Icons.eye}
                       </button>
 
                       <button
-                        onClick={() => openPollPage(poll._id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                        onClick={() => openPollAnalyticsPage(poll._id)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-orange-400 hover:bg-orange-500/10 transition-colors cursor-pointer"
                         title="Analytics"
                       >
                         {Icons.analytics}
@@ -250,7 +250,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       <button
                         onClick={() => copyPollLink(poll._id)}
                         className={`h-7 rounded-lg flex items-center justify-center transition-colors ${
-                          copiedPollId === poll._id ? "w-auto px-2 text-cyan-400 bg-cyan-500/10" : "w-7 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10"
+                          copiedPollId === poll._id ? "w-auto px-2 text-cyan-400 bg-cyan-500/10" : "w-7 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10 cursor-pointer"
                         }`}
                         title={copiedPollId === poll._id ? "Copied" : "Copy link"}
                       >
@@ -265,7 +265,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
 
                       <button
                         onClick={()=> handleDelete(poll._id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="Delete"
                       >
                         {Icons.trash}
@@ -416,7 +416,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       </button>
 
                       <button
-                        onClick={() => openPollPage(poll._id)}
+                        onClick={() => openPollAnalyticsPage(poll._id)}
                         className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-orange-500/[0.06] hover:text-orange-400"
                         style={{ fontFamily: "'DM Sans', sans-serif" }}
                         aria-label="Analytics poll"

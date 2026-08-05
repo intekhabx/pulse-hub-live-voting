@@ -53,7 +53,7 @@ export function Sidebar({ active, setActive, collapsed, setCollapsed, mobileOpen
         lg:translate-x-0 lg:transition-[width] lg:duration-300 ${collapsed ? "lg:w-16" : "lg:w-56"}`}
       >
         {/* Logo */}
-        <div className={`flex items-center h-16 px-4 border-b border-white/[0.06] ${collapsed ? "lg:justify-center" : "gap-3"}`}>
+        <a href="/" className={`flex items-center h-16 px-4 border-b border-white/[0.06] ${collapsed ? "lg:justify-center" : "gap-3"} cursor-default`}>
           <div className="relative w-8 h-8 flex-shrink-0">
             <div className="absolute inset-0 rounded-[9px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md" />
             <div className="relative w-8 h-8 rounded-[9px] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30 text-white">
@@ -61,7 +61,7 @@ export function Sidebar({ active, setActive, collapsed, setCollapsed, mobileOpen
             </div>
           </div>
           {(!collapsed || mobileOpen) && (
-            <span className="text-lg font-black tracking-tight text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
+            <span className="text-lg font-black tracking-tight text-white cursor-default" style={{ fontFamily: "'Syne', sans-serif" }}>
               Pulse<span className="text-violet-500">Hub</span>
             </span>
           )}
@@ -72,14 +72,14 @@ export function Sidebar({ active, setActive, collapsed, setCollapsed, mobileOpen
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           </button>
-        </div>
+        </a>
 
         {/* Nav Items */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
           {/* Create Poll CTA */}
           <button
             onClick={() => handleNav("create")}
-            className={`w-full flex items-center rounded-xl px-3 py-2.5 mb-3 font-bold text-sm text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 ${
+            className={`w-full flex items-center rounded-xl px-3 py-2.5 mb-3 font-bold text-sm text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
               collapsed && !mobileOpen ? "lg:justify-center" : "gap-3"
             }`}
             style={{ fontFamily: "'DM Sans', sans-serif" }}

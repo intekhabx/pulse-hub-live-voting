@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useContext, useEffect, useState } from 'react';
 import pollService from '../../services/pollService';
-import type { Poll } from '../../components/Dashboard/assets/types';
+import type { IPoll, IPublishedPollQuestionsAnalytics } from '../../components/Dashboard/assets/types';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { router } from '../../App';
@@ -28,12 +28,13 @@ function RouteComponent() {
   if (!context) {
     throw new Error("Vote page must be used within ContextApiProvider");
   }
-  const { dark } = context;
+  const { dark, socketRef } = context;
 
   const [loading, setLoading] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
-  const [pollData, setPollData] = useState<Poll | null>();
+  const [pollData, setPollData] = useState<IPoll | null>();
   const [pollInputData, setPollInputData] = useState<IPollInputData[]>([]);
+  const [publishedPollQuestionsAnalytics, setPublishedPollQuestionsAnalytics] = useState<IPublishedPollQuestionsAnalytics[]>([]);
 
 
   useEffect(() => {
@@ -41,12 +42,24 @@ function RouteComponent() {
       try {
         const result = await pollService.getPollById(pollId);
         setPollData(result.data);
+        if(result.data.isPublished){
+          const res = await pollService.getPublishedPollQuestionsAnalytics(pollId);
+          setPublishedPollQuestionsAnalytics(res.data);
+        }
       } finally {
         setPollLoading(false);
       }
     }
     getPollById();
   }, []);
+
+
+  useEffect(() => {
+    socketRef.current?.on("server:poll-updated", (data)=>{
+      setPublishedPollQuestionsAnalytics(data?.analytics);
+    })
+  }, [])
+  
 
 
   const handleSelect = (questionId: string, optionId: string) => {
@@ -73,22 +86,7 @@ function RouteComponent() {
     setLoading(true);
     e.preventDefault();
 
-    // step:1 - get data from form
-    // const formData = new FormData(e.currentTarget);
-
-    // step:2 - creating an array of question and option
-    // const answers: { questionId: string; optionId: string}[] = [];
-
-    // // step:3 - push all {questionId, optionId} in the answers array
-    // for (const [questionId, optionId] of formData.entries()) {
-    //   answers.push({
-    //     questionId,
-    //     optionId: optionId.toString()
-    //   })
-    // }
-
     try {
-      // await pollService.submitVote(pollId, answers);
       await pollService.submitVote(pollId, pollInputData);
       localStorage.removeItem("tempPollData");
       setPollInputData([]);
@@ -200,6 +198,10 @@ function RouteComponent() {
                   {ques.options?.map((opt) => {
                     const isSelected = pollInputData?.find((item) => item.questionId === ques._id)?.optionId === opt._id;
 
+                    // Look up this option's vote percentage from analytics, if available (poll is published)
+                    const analyticsQuestion = publishedPollQuestionsAnalytics?.find((a) => a._id === ques._id);
+                    const analyticsOption = analyticsQuestion?.options?.find((o) => o.optionId === opt._id);
+
                     return (
                       <label
                         key={opt._id}
@@ -223,7 +225,21 @@ function RouteComponent() {
                           onChange={()=> handleSelect(ques._id, opt._id)}
                         />
                         <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
-                        <span className="text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
+                        <span className="flex-1 text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
+                        {publishedPollQuestionsAnalytics.length > 0 && analyticsOption && (
+                          <span
+                            className={`ml-auto shrink-0 text-sm font-bold tabular-nums ${
+                              isSelected
+                                ? "text-emerald-400"
+                                : dark
+                                  ? "text-gray-500"
+                                  : "text-gray-400"
+                            }`}
+                            style={{ fontFamily: "'DM Sans', sans-serif" }}
+                          >
+                            {analyticsOption.percentage.toFixed(0)}%
+                          </span>
+                        )}
                       </label>
                     )
                   })}
