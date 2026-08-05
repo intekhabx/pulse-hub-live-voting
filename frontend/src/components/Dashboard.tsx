@@ -1,6 +1,5 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { DataContext } from "../Context/ContextApi";
 import { Sidebar } from "./Dashboard/Sidebar";
 import { TopNavbar } from "./Dashboard/TopNavBar";
 import { OverviewSection } from "./Dashboard/pages/OverviewSection";
@@ -10,6 +9,7 @@ import { CreatePollSection } from "./Dashboard/pages/CreatePollSection";
 import { SettingsSection } from "./Dashboard/pages/SettingSection";
 import { PollDetailsSection } from "./Dashboard/pages/PollDetailsSection";
 import { ViewAndEditSection } from "./Dashboard/pages/ViewAndEditPollSection";
+import { PollContext } from "../Context/PollContext";
 
 interface DashboardProps {
   pollId?: string;
@@ -18,11 +18,12 @@ interface DashboardProps {
 
 export default function Dashboard({ pollId, editMode }: DashboardProps) {
   const navigate = useNavigate();
-  const context = useContext(DataContext);
-  if (!context) {
+  const pollContext = useContext(PollContext);
+  if (!pollContext) {
     throw new Error("Dashboard must be used within ContextApiProvider");
   }
-  const { refreshDashboardData } = context;
+  const { fetchDashboardData } = pollContext;
+
   const dashboardSections = ["overview", "polls", "analytics", "create", "settings"];
   const [activeSection, setActiveSection] = useState(() => {
     const savedSection = localStorage.getItem("dashboard-section");
@@ -32,8 +33,8 @@ export default function Dashboard({ pollId, editMode }: DashboardProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    refreshDashboardData();
-  }, [refreshDashboardData]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleSetActiveSection = (section: string) => {
     setActiveSection(section);

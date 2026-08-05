@@ -21,7 +21,7 @@ export default function Login() {
   if(!context){
     throw new Error("dark must be present in the DataContext Contexts");
   }
-  const {dark} = context;
+  const {dark, setAuthUser} = context;
 
   const navigate = useNavigate();
   
@@ -63,7 +63,8 @@ export default function Login() {
       // await new Promise((r) => setTimeout(r, 1500));
       try {
         setLoading(true);
-        await authService.login(form);
+        const res = await authService.login(form);
+        setAuthUser(res.data.user);
         setSuccess(true);
         // redirect uset to dashboard
         setTimeout(() => {

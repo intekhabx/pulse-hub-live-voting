@@ -1,14 +1,12 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { StatCard } from "../StatCard";
 import { StatusBadge } from "../StatusBadge";
 import { ActivityIcon } from "../ActivityIcon";
 import { Icons } from "../Icons";
 import tokenStore from "../../../services/tokenStoreService";
-import { DataContext } from "../../../Context/ContextApi";
-import { Loader } from "../../Loader";
-import pollService from "../../../services/pollService";
-import type { IActivityItem } from "../assets/types";
 import { getTimeAgo } from "../../../utils/getTimeAge";
+import { PollContext } from "../../../Context/PollContext";
+import { Loader } from "../../Loader";
 
 // ── Overview Section ───────────────────────────────────────────────────────
 
@@ -19,26 +17,17 @@ interface OverviewSectionProps {
 export function OverviewSection({ setActive }: OverviewSectionProps) {
   const user = tokenStore.getUser();
 
-  const context = useContext(DataContext);
-  if(!context){
-    throw new Error("DataContext must be used inside ContextApiProvider")
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("recentActivity, dashboardData, dashboardLoading must should be present in PollContext");
   }
-  const {dashboardData, dashboardLoading} = context;
+
+  const {dashboardData, dashboardLoading, recentActivity} = pollContext;
+
 
   if (dashboardLoading) {
     return <Loader label="Loading dashboard…" className="min-h-[28rem]" />;
   }
- 
-
-  // recent activity 
-  const [recentActivity, setRecentActivity] = useState<IActivityItem[]>([]);
-  useEffect(() => {
-    const getRecentActivity = async()=> {
-      const res = await pollService.getRecentActivity();
-      setRecentActivity(res?.data);
-    }
-    getRecentActivity();
-  }, [])
 
 
   return (
@@ -174,8 +163,8 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
           </h2>
           <div className="space-y-3">
             {recentActivity?.length > 0 ? (
-              recentActivity.map((item) => (
-                <div key={item.pollId+"abc"} className="flex items-start gap-3">
+              recentActivity.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-3">
                   <ActivityIcon type={item.icon} />
                   <div className="flex-1 min-w-0">
                     <p

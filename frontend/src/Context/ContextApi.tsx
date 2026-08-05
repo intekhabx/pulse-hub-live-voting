@@ -1,7 +1,5 @@
-import { createContext, useCallback, useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { createContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
 import connectWS from "../socket";
-import responseService from "../services/responseService";
-import type { IDashboard } from "../components/Dashboard/assets/types";
 import type { IUser } from "../types";
 import tokenStore from "../services/tokenStoreService";
 
@@ -9,18 +7,17 @@ import tokenStore from "../services/tokenStoreService";
 export type ContextType = {
   dark: boolean,
   toggleTheme: ()=> void,
-  dashboardData: IDashboard | undefined,
-  dashboardLoading: boolean,
-  setDashboardData: React.Dispatch<React.SetStateAction<IDashboard | undefined>>,
-  refreshDashboardData: () => Promise<void>,
+  user: IUser | null,
+  setAuthUser: (user: IUser) => void,
+  removeAuthUser: () => void,
   socketRef: React.RefObject<ReturnType<typeof connectWS> | null>;
-  user: IUser | null
 }
 
 export const DataContext = createContext<ContextType | null>(null);
 
 
 const ContextApiProvider = ({children}: PropsWithChildren) => {
+
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("theme");
     return saved ? saved === "dark" : true; // default
@@ -38,19 +35,33 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
   // check user is loggedIn or not to show buttons on page
   const [user, setUser] = useState<IUser | null>(null);
 
+  // App load hone par check karega
   useEffect(()=> {
     const authenticateUser = ()=> {
-      const user = tokenStore.getUser();
+      const storedUser = tokenStore.getUser();
       const accessToken = tokenStore.getAccessToken();
   
-      if(user && accessToken){
+      if(storedUser && accessToken){
         setUser(user);
       }
     }
     authenticateUser();
   }, [])
 
-  // socket.io connection working
+
+  // Login ke baad user state update karne ke liye
+  const setAuthUser = (user: IUser) => {
+    setUser(user);
+  };
+
+  // Logut ke baad user state me data remove krne ke liye
+  const removeAuthUser = () => {
+    setUser(null);
+  };
+
+
+
+  // socket.io connection working*****
   const socketRef = useRef<ReturnType<typeof connectWS> | null>(null);
 
   useEffect(()=>{
@@ -70,45 +81,11 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
     socketRef.current?.on("from-server", (data)=> {
       console.log(data)
     })
-
-    socketRef.current?.on("server:poll-updated", (data)=> {
-      console.log(data);
-      setDashboardData((prev)=> prev ? {...prev, totalResponses: prev.totalResponses + 1} : prev);
-    })
-
-    socketRef.current?.on("server:poll-created", ()=> {
-      refreshDashboardData();
-    })
-    socketRef.current?.on("server:poll-deleted", refreshDashboardData);
-    
-  }, [])
-
-
-
-  // overview section data
-  const [dashboardData, setDashboardData] = useState<IDashboard>();
-  const [dashboardLoading, setDashboardLoading] = useState(true);
- 
-  const refreshDashboardData = useCallback(async () => {
-    setDashboardLoading(true);
-    try {
-      const res = await responseService.getDashboardData();
-      setDashboardData(res.data);
-    } catch (error) {
-      // A guest session cannot access dashboard data; it is fetched again after login.
-      setDashboardData(undefined);
-    } finally {
-      setDashboardLoading(false);
-    }
   }, []);
- 
-  useEffect(() => {
-    refreshDashboardData();
-  }, [refreshDashboardData]);
 
 
   return (
-    <DataContext.Provider value={{dark, toggleTheme, dashboardData, dashboardLoading, setDashboardData, refreshDashboardData, socketRef, user}}>
+    <DataContext.Provider value={{dark, toggleTheme, user, setAuthUser, removeAuthUser, socketRef}}>
       {children}
     </DataContext.Provider>
   )

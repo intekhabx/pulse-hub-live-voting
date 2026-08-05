@@ -1,8 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import authService from "../../services/authService";
 import tokenStore from "../../services/tokenStoreService";
 import { Icons } from "./Icons";
+import { DataContext } from "../../Context/ContextApi";
 
 // ── Top Navbar ─────────────────────────────────────────────────────────────
 
@@ -21,6 +22,13 @@ const sectionLabels: Record<string, string> = {
 };
 
 export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarProps) {
+
+  const context = useContext(DataContext);
+  if(!context){
+    throw new Error("removeAuthUser should be defined in the ContextApi");
+  }
+  const {removeAuthUser} = context;
+
   const user = tokenStore.getUser();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -29,6 +37,7 @@ export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarPr
     setIsLoggingOut(true);
     try {
       await authService.logout();
+      removeAuthUser();
       localStorage.removeItem("dashboard-section");
       localStorage.removeItem("pulsehub-dashboard-section");
       navigate({ to: "/" });
