@@ -1,57 +1,21 @@
-import { useContext, useEffect, useState } from "react";
-import pollService from "../../../services/pollService";
-import type { IAnalyticsPageData } from "../assets/types";
+import { useContext } from "react";
 import { getPollStatus } from "../../../utils/getPollStatus";
-import { DataContext } from "../../../Context/ContextApi";
+import { PollContext } from "../../../Context/PollContext";
 
 export function AnalyticsSection() {
-  const [pollResponse, setPollResponse] = useState<IAnalyticsPageData>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("pollResponse, error and getAnalyticsPageData should be defined inside PollContext");
+  }
+
+  const {pollResponse, error, getAnalyticsPageData, isLoading} = pollContext;
 
   const topPoll = pollResponse?.pollResponses.reduce((a, b) => (a.totalVoteCount > b.totalVoteCount ? a : b), pollResponse.pollResponses[0]);
   const totalResponses = pollResponse?.pollResponses.reduce((a, p) => a + p.totalVoteCount, 0);
 
-  const getAnalyticsPageData = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await pollService.getAnalyticsPageData();
-      setPollResponse(res.data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load analytics data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getAnalyticsPageData();
-  }, []);
-
+  
   const hasData = !!pollResponse?.pollResponses?.length;
-
-
-  // io totalResponse updation
-  const context = useContext(DataContext);
-  if(!context){
-    throw new Error("DataContext must be used inside ContextApiProvider");
-  }
-  const {socketRef} = context;
-
-  useEffect(()=> {
-    socketRef.current?.on("server:poll-updated", (data) => {
-      setPollResponse((prev) => {
-        if (!prev) return prev;
-    
-        return {
-          ...prev,
-          pollResponses: prev.pollResponses.map((p) => p.pollId === data.pollId ? {...p, totalVoteCount: data.totalResponseCount} : p),
-        };
-      });
-    });
-  }, [])
 
   return (
     <div className="space-y-5">

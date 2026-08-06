@@ -1,13 +1,10 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { StatusBadge } from "../StatusBadge";
 import { Icons } from "../Icons";
 import { getPollStatus } from "../../../utils/getPollStatus";
 import { useNavigate } from "@tanstack/react-router";
-import pollService from "../../../services/pollService";
-import type { IPollResponse, IPoll } from "../assets/types";
 import { Loader } from "../../Loader";
-import { DataContext } from "../../../Context/ContextApi";
-import toast from "react-hot-toast";
+import { PollContext } from "../../../Context/PollContext";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -36,44 +33,20 @@ const filterState = {
 }
 
 export function PollsSection({ setActive }: PollsSectionProps) {
-  const [polls, setPolls] = useState<IPoll[]>();
-  const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>();
-  const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // updating totalPollResponse based on io data
-  const context = useContext(DataContext);
-  if (!context) {
-    throw new Error("DataContext must be used inside ContextApiProvider");
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("polls, totalPollResponse, isLoading and handleDelete should be present inside PollContext");
   }
-  const { socketRef } = context;
 
-  useEffect(() => {
-    socketRef.current?.on("server:poll-updated", (data) => {
-      setTotalPollResponse((prev) =>
-        prev?.map((item) => (item.pollId === data.pollId ? { ...item, totalResponse: data.totalResponseCount } : item))
-      );
-    });
-  }, []);
+  const {polls, totalPollResponse, isLoading, handleDelete} = pollContext;
+  const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
+  
 
   const [filter, setFilter] = useState<FilterType>("all");
   const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
   const filteredPollResponse = filter === "all" ? totalPollResponse : totalPollResponse?.filter((r) => getPollStatus(r.expiresAt) === filter);
 
-  const getMyPolls = async () => {
-    try {
-      const res = await pollService.getMyPolls();
-      const { polls, pollResponse } = res.data;
-      setPolls(polls);
-      setTotalPollResponse(pollResponse);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getMyPolls();
-  }, []);
 
   const navigate = useNavigate();
 
@@ -98,28 +71,6 @@ export function PollsSection({ setActive }: PollsSectionProps) {
     setCopiedPollId(pollId);
     setTimeout(() => setCopiedPollId(null), 1800);
   };
-
-  // handleDelete for deleting the polls
-  const handleDelete = async(pollId: string)=> {
-    const ok = confirm("do you want to delete this poll");
-    if(!ok){
-      return;
-    }
-
-    try {
-      await pollService.deletePollById(pollId);
-      toast.success("Poll Deleted Successfully");
-
-      // remove deleted poll from the pollsection
-      setPolls((prev = []) =>
-        prev.filter((poll) => poll._id !== pollId)
-      );
-    } 
-    catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "something went wrong");
-    }
-  }
 
 
   const formatExpiry = (expiresAt: string) =>

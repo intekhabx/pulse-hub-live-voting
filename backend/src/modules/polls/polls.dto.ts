@@ -2,7 +2,7 @@ import * as z from 'zod';
 
 
 const optionDto = z.object({
-  optionText: z.string().trim().min(2, "Option text is required"),
+  optionText: z.string().trim().min(1, "Option text is required"),
 });
 
 const questionDto = z.object({

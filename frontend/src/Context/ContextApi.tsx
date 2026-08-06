@@ -10,7 +10,8 @@ export type ContextType = {
   user: IUser | null,
   setAuthUser: (user: IUser) => void,
   removeAuthUser: () => void,
-  socketRef: React.RefObject<ReturnType<typeof connectWS> | null>;
+  socketRef: React.RefObject<ReturnType<typeof connectWS> | null>,
+  socketReady: boolean,
 }
 
 export const DataContext = createContext<ContextType | null>(null);
@@ -42,7 +43,7 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
       const accessToken = tokenStore.getAccessToken();
   
       if(storedUser && accessToken){
-        setUser(user);
+        setUser(storedUser);
       }
     }
     authenticateUser();
@@ -63,9 +64,12 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
 
   // socket.io connection working*****
   const socketRef = useRef<ReturnType<typeof connectWS> | null>(null);
+  const [socketReady, setSocketReady] = useState<boolean>(false);
 
   useEffect(()=>{
     socketRef.current = connectWS();
+
+    setSocketReady(true);
 
     socketRef.current.on("connect", ()=> {
       // console.log('connected', socketRef.current?.id);
@@ -85,7 +89,7 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
 
 
   return (
-    <DataContext.Provider value={{dark, toggleTheme, user, setAuthUser, removeAuthUser, socketRef}}>
+    <DataContext.Provider value={{dark, toggleTheme, user, setAuthUser, removeAuthUser, socketRef, socketReady}}>
       {children}
     </DataContext.Provider>
   )

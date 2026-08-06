@@ -581,19 +581,25 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
   // step:1 - extract pollId from params
   const {pollId} = req?.params;
 
-  // step:2 - check the redis DB that polAnalyticsData is present or not
+  // step:2 check poll is published or not
+  const poll = await pollModel.findById(pollId);
+  if(!poll || !poll?.isPublished){
+    throw ApiError.badRequest("poll not found or not published");
+  }
+
+  // step:3 - check the redis DB that polAnalyticsData is present or not
   const key = `poll:${pollId}`;
   const rawData = await redis.get(key);
   let analyticsData = rawData && JSON.parse(rawData);
 
-  // step:3 - if analyticsData is not present in redis then fetch from DB
+  // step:4- if analyticsData is not present in redis then fetch from DB
   if(!analyticsData){
     // now analyticData is not present in redis then fetch from db and store in redis also
     analyticsData = await getPollDetailedAnalytics(new mongoose.Types.ObjectId(pollId?.toString()));
     await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
   
-  // step:4 extaract only showable data from analyticsData
+  // step:5 extaract only showable data from analyticsData
   const votesPercentages = analyticsData.analytics; //arrayofobject of question and option
 
   ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);

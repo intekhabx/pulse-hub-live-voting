@@ -1,6 +1,7 @@
 import { Job, Worker } from "bullmq";
 import redis from "../config/redis.config";
 import { addRecentActivity } from "../modules/polls/polls.controller";
+import { io } from "../server";
 
 
 export const pollExpiryWorker = new Worker("poll-expiry", async (job: Job)=> {
@@ -11,6 +12,9 @@ export const pollExpiryWorker = new Worker("poll-expiry", async (job: Job)=> {
   
     // step:2 - whenever poll is expired we have to add in the recentActivity
     await addRecentActivity(userId, {pollId, pollTitle, message: "Poll Expired", icon: "expire"});
+
+    // step:3 - ṣend emit to the frontend that poll expire
+    io.emit("server:poll-expired");
   } 
   catch (error) {
     console.error("Poll expiry worker failed:", error);
