@@ -12,6 +12,7 @@ interface PollDetailsSectionProps {
 
 export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   const [poll, setPoll] = useState<IPollAnalytics | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // fetching the data from the io
   const context = useContext(DataContext);
@@ -28,8 +29,18 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
 
   useEffect(() => {
     async function getPoll() {
-      const result = await pollService.getPollAnalytics(pollId);
-      setPoll(result.data);
+      setIsLoading(true);
+      try {
+        const result = await pollService.getPollAnalytics(pollId);
+        setPoll(result.data);
+      } 
+      catch (err: any) {
+        console.error(err);
+        setPoll(null);
+      }
+      finally{
+        setIsLoading(false);
+      }
     }
     getPoll();
   }, [pollId]);
@@ -47,7 +58,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   };
 
 
-  if (!poll) {
+  if (isLoading) {
     return <Loader label="Loading poll details…" className="min-h-[28rem]" />;
   }
 
@@ -80,7 +91,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
             <span className="text-xs font-semibold uppercase tracking-widest text-orange-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               Poll Analytics
             </span>
-            <StatusBadge expiresAt={poll.expiresAt} />
+            <StatusBadge expiresAt={poll.expiresAt} pollCreationStatus={poll.status} />
           </div>
 
           <h1 className="text-lg sm:text-xl font-bold text-white truncate" style={{ fontFamily: "'Syne', sans-serif" }}>

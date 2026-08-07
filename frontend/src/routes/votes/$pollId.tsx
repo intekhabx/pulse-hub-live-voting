@@ -9,6 +9,7 @@ import authService from '../../services/authService';
 import { DataContext } from '../../Context/ContextApi';
 import { Loader } from '../../components/Loader';
 import { StatusBadge } from '../../components/Dashboard/StatusBadge';
+import { getPollStatus } from '../../utils/getPollStatus';
 
 
 interface IPollInputData {
@@ -35,6 +36,7 @@ function RouteComponent() {
   const [pollData, setPollData] = useState<IPoll | null>();
   const [pollInputData, setPollInputData] = useState<IPollInputData[]>([]);
   const [publishedPollQuestionsAnalytics, setPublishedPollQuestionsAnalytics] = useState<IPublishedPollQuestionsAnalytics[]>([]);
+  const [pollNotFound, setPollNotFound] = useState(false);
 
 
   useEffect(() => {
@@ -46,6 +48,8 @@ function RouteComponent() {
           const res = await pollService.getPublishedPollQuestionsAnalytics(pollId);
           setPublishedPollQuestionsAnalytics(res.data);
         }
+      } catch (err) {
+        setPollNotFound(true);
       } finally {
         setPollLoading(false);
       }
@@ -162,106 +166,128 @@ function RouteComponent() {
           </span>
         </div>
 
-        {pollLoading ? <Loader label="Loading poll…" className="min-h-[28rem]" /> : <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
-          <div className={`border-b bg-gradient-to-r from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08] px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
-            <div className={`mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              <StatusBadge expiresAt={pollData ? pollData?.expiresAt : ""} />
+        {pollLoading ? (
+          <Loader label="Loading poll…" className="min-h-[28rem]" />
+        ) : pollNotFound ? (
+          <div className={`flex min-h-[28rem] flex-col items-center justify-center rounded-2xl border px-6 py-12 text-center backdrop-blur-xl sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90" : "border-violet-100 bg-white/90"}`}>
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/10">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" className="text-rose-400" />
+                <path d="M21 21l-4.35-4.35M9 8l4 4M13 8l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-rose-400" />
+              </svg>
             </div>
-            <h1 className={`text-3xl font-black tracking-tight sm:text-4xl ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
-              {pollData?.title}
+            <h1 className={`text-2xl font-black tracking-tight sm:text-3xl ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+              Poll Not Found
             </h1>
-
-            {pollData?.description && (
-              <p className={`mt-3 max-w-2xl text-sm leading-relaxed sm:text-base ${dark ? "text-gray-400" : "text-gray-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                {pollData.description}
-              </p>
-            )}
+            <p className={`mt-3 max-w-sm text-sm leading-relaxed ${dark ? "text-gray-500" : "text-gray-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              This poll doesn't exist or may have been removed. Please check the link and try again.
+            </p>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:space-y-6 sm:p-8">
-            {pollData?.questions?.map((ques, idx) => (
-              <div
-                key={ques._id}
-                className={`rounded-2xl border p-5 transition-colors duration-200 sm:p-6 ${dark ? "border-white/[0.07] bg-white/[0.025] hover:border-violet-500/20" : "border-gray-200 bg-[#fcfbff] hover:border-violet-300 hover:shadow-sm"}`}
-              >
-                <div className="mb-5 flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-xs font-bold text-violet-300" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    {idx + 1}
-                  </span>
-                  <h2 className={`pt-0.5 text-base font-bold leading-relaxed sm:text-lg ${dark ? "text-gray-100" : "text-gray-900"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
-                  {ques.questionText}
-                    {ques.required ? <span className="ml-1 text-fuchsia-400">*</span> : null}
-                  </h2>
-                </div>
-
-                <div className="space-y-3">
-                  {ques.options?.map((opt) => {
-                    const isSelected = pollInputData?.find((item) => item.questionId === ques._id)?.optionId === opt._id;
-
-                    // Look up this option's vote percentage from analytics, if available (poll is published)
-                    const analyticsQuestion = publishedPollQuestionsAnalytics?.find((a) => a._id === ques._id);
-                    const analyticsOption = analyticsQuestion?.options?.find((o) => o.optionId === opt._id);
-
-                    return (
-                      <label
-                        key={opt._id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
-                          isSelected
-                            ? dark
-                              ? "border-emerald-500/60 bg-emerald-500/[0.10] text-white"
-                              : "border-emerald-500/70 bg-emerald-50 text-gray-900"
-                            : dark
-                              ? "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-violet-500/40 hover:bg-violet-500/[0.06] hover:text-white"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-violet-300 hover:bg-violet-50/50 hover:text-gray-950"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={ques._id}
-                          value={opt._id}
-                          className="peer sr-only"
-                          required= {ques.required ? true : false}
-                          checked= {isSelected}
-                          onChange={()=> handleSelect(ques._id, opt._id)}
-                        />
-                        <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
-                        <span className="flex-1 text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
-                        {publishedPollQuestionsAnalytics.length > 0 && analyticsOption && (
-                          <span
-                            className={`ml-auto shrink-0 text-sm font-bold tabular-nums ${
-                              isSelected
-                                ? "text-emerald-400"
-                                : dark
-                                  ? "text-gray-500"
-                                  : "text-gray-400"
-                            }`}
-                            style={{ fontFamily: "'DM Sans', sans-serif" }}
-                          >
-                            {analyticsOption.percentage.toFixed(0)}%
-                          </span>
-                        )}
-                      </label>
-                    )
-                  })}
-                </div>
+        ) : (
+          <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
+            <div className={`border-b bg-gradient-to-r from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08] px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
+              <div className={`mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <StatusBadge expiresAt={pollData ? pollData?.expiresAt : ""} pollCreationStatus={pollData ? pollData.status : "active"} />
               </div>
-            ))}
+              <h1 className={`text-3xl font-black tracking-tight sm:text-4xl ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+                {pollData?.title}
+              </h1>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              {loading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg> Submitting…</> : "Submit Vote"}
-              {!loading && (
-                <svg className="transition-transform duration-200 group-hover:translate-x-1" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              {pollData?.description && (
+                <p className={`mt-3 max-w-2xl text-sm leading-relaxed sm:text-base ${dark ? "text-gray-400" : "text-gray-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {pollData.description}
+                </p>
               )}
-            </button>
-          </form>
-        </div>}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:space-y-6 sm:p-8">
+              {pollData?.questions?.map((ques, idx) => (
+                <div
+                  key={ques._id}
+                  className={`rounded-2xl border p-5 transition-colors duration-200 sm:p-6 ${dark ? "border-white/[0.07] bg-white/[0.025] hover:border-violet-500/20" : "border-gray-200 bg-[#fcfbff] hover:border-violet-300 hover:shadow-sm"}`}
+                >
+                  <div className="mb-5 flex items-start gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-xs font-bold text-violet-300" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {idx + 1}
+                    </span>
+                    <h2 className={`pt-0.5 text-base font-bold leading-relaxed sm:text-lg ${dark ? "text-gray-100" : "text-gray-900"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+                    {ques.questionText}
+                      {ques.required ? <span className="ml-1 text-fuchsia-400">*</span> : null}
+                    </h2>
+                  </div>
+
+                  <div className="space-y-3">
+                    {ques.options?.map((opt) => {
+                      const isSelected = pollInputData?.find((item) => item.questionId === ques._id)?.optionId === opt._id;
+
+                      // Look up this option's vote percentage from analytics, if available (poll is published)
+                      const analyticsQuestion = publishedPollQuestionsAnalytics?.find((a) => a._id === ques._id);
+                      const analyticsOption = analyticsQuestion?.options?.find((o) => o.optionId === opt._id);
+
+                      return (
+                        <label
+                          key={opt._id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                            isSelected
+                              ? dark
+                                ? "border-emerald-500/60 bg-emerald-500/[0.10] text-white"
+                                : "border-emerald-500/70 bg-emerald-50 text-gray-900"
+                              : dark
+                                ? "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-violet-500/40 hover:bg-violet-500/[0.06] hover:text-white"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-violet-300 hover:bg-violet-50/50 hover:text-gray-950"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={ques._id}
+                            value={opt._id}
+                            className="peer sr-only"
+                            required= {ques.required ? true : false}
+                            checked= {isSelected}
+                            onChange={()=> handleSelect(ques._id, opt._id)}
+                          />
+                          <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
+                          <span className="flex-1 text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
+                          {publishedPollQuestionsAnalytics.length > 0 && analyticsOption && (
+                            <span
+                              className={`ml-auto shrink-0 text-sm font-bold tabular-nums ${
+                                isSelected
+                                  ? "text-emerald-400"
+                                  : dark
+                                    ? "text-gray-500"
+                                    : "text-gray-400"
+                              }`}
+                              style={{ fontFamily: "'DM Sans', sans-serif" }}
+                            >
+                              {analyticsOption.percentage.toFixed(0)}%
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {
+                pollData && getPollStatus(pollData?.expiresAt, pollData?.status) === "active" &&
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {loading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg> Submitting…</> : "Submit Vote"}
+                  {!loading && (
+                    <svg className="transition-transform duration-200 group-hover:translate-x-1" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              }
+            </form>
+          </div>
+        )}
         <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Your response is securely recorded by PulseHub.
         </p>

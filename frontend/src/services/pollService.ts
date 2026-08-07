@@ -10,6 +10,16 @@ const pollService = {
     return data;
   },
 
+  async createPollAsDraft({title, description, expiresAt, questions, allowAnonymous}: ICreatePoll){
+    const {data} = await api.post('/api/polls/create-poll-draft', {title, description, expiresAt, questions, allowAnonymous});
+    return data;
+  },
+
+  async updatePollAsActive(pollId: string){
+    const {data} = await api.patch(`/api/polls/update-poll-as-active/${pollId}`);
+    return data;
+  },
+
   async updatePoll(pollId: string, {title, description, expiresAt, questions, allowAnonymous}: IUpdatePoll){
     const {data} = await api.patch(`/api/polls/update-poll/${pollId}`, {title, description, expiresAt, questions, allowAnonymous});
     return data;
@@ -22,6 +32,11 @@ const pollService = {
 
   async getPollById(pollId: string){
     const {data} = await api.get(`/api/polls/get-poll/${pollId}`);
+    return data;
+  },
+
+  async getMyPollById(pollId: string){
+    const {data} = await api.get(`/api/polls/get-mypoll/${pollId}`);
     return data;
   },
 

@@ -25,6 +25,7 @@ type Errors = {
 type PollFormState = {
   title: string;
   description: string;
+  status: "active" | "draft"
   allowAnonymous: boolean;
   expiresAt: string; // datetime-local formatted
   questions: Question[];
@@ -40,6 +41,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+  const [isActivating, setIsActivating] = useState(false);
 
   const [expiresAtRaw, setExpiresAtRaw] = useState<string>("");
   const [title, setTitle] = useState("");
@@ -47,6 +49,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
   const [allowAnonymous, setAllowAnonymous] = useState(true);
   const [expiresAt, setExpiresAt] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [status, setStatus] = useState<"active" | "draft">("active");
 
   // Snapshot of the last-saved (or originally loaded) poll, used to discard
   // in-progress edits when the user hits Cancel.
@@ -63,18 +66,20 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     setAllowAnonymous(s.allowAnonymous);
     setExpiresAt(s.expiresAt);
     setQuestions(s.questions);
+    setStatus(s.status);
   };
 
   useEffect(() => {
     async function loadPoll() {
       setIsLoading(true);
       try {
-        const res = await pollService.getPollById(pollId);
+        const res = await pollService.getMyPollById(pollId);
         const poll = res.data;
         const loaded: PollFormState = {
           title: poll.title ?? "",
           description: poll.description ?? "",
           allowAnonymous: poll.allowAnonymous ?? true,
+          status: poll.status ?? "draft",
           expiresAt: poll.expiresAt ? new Date(poll.expiresAt).toISOString().slice(0, 16) : "",
           questions: (poll.questions ?? []).map((q: any) => ({
             _id: q._id,
@@ -158,6 +163,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
         description: description.trim(),
         allowAnonymous,
         expiresAt,
+        status,
         questions: cleanedQuestions,
       };
       setSavedState(newSavedState);
@@ -180,8 +186,19 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     setIsEditing(false);
   };
 
-  const handlePublish = async () => {
-    toast.success("Poll published");
+  const handlePollActive = async () => {
+    setIsActivating(true);
+    try {
+      await pollService.updatePollAsActive(pollId);
+      toast.success("Poll is now active");
+    } 
+    catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "something went wrong while activating")
+    }
+    finally{
+      setIsActivating(false);
+    }
   };
 
   const addQuestion = () =>
@@ -215,7 +232,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
               {isEditing ? "Edit Poll" : "View Poll"}
             </h1>
-            {expiresAtRaw && <StatusBadge expiresAt={expiresAtRaw} />}
+            <StatusBadge expiresAt={expiresAtRaw} pollCreationStatus={status} />
           </div>
           <p className="text-xs sm:text-sm text-gray-500 truncate" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             {isEditing ? "Make changes and save" : "Review your poll before publishing"}
@@ -558,15 +575,30 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
             </button>
           </div>
         ) : (
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={handlePublish}
-              className="inline-flex items-center gap-2 rounded-xl border border-teal-400/20 bg-gradient-to-r from-teal-500 via-teal-500 to-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 ring-1 ring-teal-400/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-teal-500/40 active:scale-95 cursor-pointer"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Publish Your Poll
-            </button>
+          <div className="pt-2">
+            { status === "draft" && 
+              <button
+                onClick={handlePollActive}
+                disabled={isActivating}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-teal-400/20 bg-gradient-to-r from-teal-500 via-teal-500 to-teal-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 ring-1 ring-teal-400/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-teal-500/40 active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                {isActivating ? (
+                  <>
+                    <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" />
+                      <path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                    Activating…
+                  </>
+                ) : (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Active This Poll
+                  </>
+                )}
+              </button>
+            }
           </div>
         )}
       </div>
