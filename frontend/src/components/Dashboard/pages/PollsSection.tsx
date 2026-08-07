@@ -44,8 +44,8 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   
 
   const [filter, setFilter] = useState<FilterType>("all");
-  const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt) === filter);
-  const filteredPollResponse = filter === "all" ? totalPollResponse : totalPollResponse?.filter((r) => getPollStatus(r.expiresAt) === filter);
+  const filtered = filter === "all" ? polls : polls?.filter((p) => getPollStatus(p.expiresAt, p.status) === filter);
+  const filteredPollResponse = filter === "all" ? totalPollResponse : totalPollResponse?.filter((r) => getPollStatus(r.expiresAt, r.status) === filter);
 
 
   const navigate = useNavigate();
@@ -166,7 +166,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                     </div>
 
                     <div className="col-span-2 flex items-center">
-                      <StatusBadge expiresAt={poll.expiresAt} />
+                      <StatusBadge expiresAt={poll.expiresAt} pollCreationStatus={poll.status} />
                     </div>
 
                     <div className="col-span-2 flex items-center">
@@ -246,7 +246,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                         </p>
 
                         <div className="flex-shrink-0">
-                          <StatusBadge expiresAt={poll.expiresAt} />
+                          <StatusBadge expiresAt={poll.expiresAt} pollCreationStatus={poll.status} />
                         </div>
                       </div>
 

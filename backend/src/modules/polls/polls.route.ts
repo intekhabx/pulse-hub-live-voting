@@ -10,11 +10,17 @@ const router = express.Router();
 // routes
 router.post('/create-poll', isLoggedIn, validate(createPollDto), controller.createPolls);
 
+router.post('/create-poll-draft', isLoggedIn, validate(createPollDto), controller.createPollAsDraft);
+
+router.patch('/update-poll-as-active/:pollId', isLoggedIn, controller.updatePollAsActive);
+
 router.patch('/update-poll/:pollId', isLoggedIn, validate(updatePollDto), controller.editAndUpdatePoll);
 
 router.get('/get-mypolls', isLoggedIn, controller.getMyPolls);
 
 router.get('/get-poll/:pollId', controller.getPollById);
+
+router.get('/get-mypoll/:pollId', isLoggedIn, controller.getMyPollById);
 
 router.post("/submit-vote/:pollId", checkAuthenticatedAndAnonymousUser, controller.submitVote);
 

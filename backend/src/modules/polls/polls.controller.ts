@@ -280,6 +280,7 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     expiresAt,
     questions,
     createdBy: req.user?.id,
+    status: "active",
   })
 
   // step:3 add poll is created in the recent activity
@@ -295,7 +296,64 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
   // step:5 - send io response to the frontend
   io.emit("server:poll-created");
 
-  ApiResponse.created(res, "poll created successfylly", {pollId: poll._id});
+  ApiResponse.created(res, "poll created successfully", {pollId: poll._id});
+})
+
+
+
+export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Response)=> {
+  // step:1 - extract poll details from body
+  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+
+  // step:2 - create poll
+  const poll = await pollModel.create({
+    title,
+    description,
+    allowAnonymous,
+    expiresAt,
+    questions,
+    createdBy: req.user?.id,
+    status: "draft",
+  })
+
+  // step:3 add poll is created in the recent activity
+  const userId = req.user?.id.toString()!;
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
+  
+
+  io.emit("server:poll-created");
+
+  ApiResponse.created(res, "poll saved successfully as draft");
+})
+
+
+
+export const updatePollAsActive = asyncHandler(async(req: AuthRequest, res: Response) => {
+  // step:1 - extract pollId from params
+  const {pollId} = req?.params;
+  const userId = req?.user?.id;
+
+  // step:2 - find the poll and check poll should also be created by same user
+  const poll = await pollModel.findOne({_id: pollId, createdBy: userId});
+  if(!poll){
+    throw ApiError.notFound("poll doesn't exists or not found");
+  }
+
+  // step:3 - check poll is already activated or not
+  if(poll.status === "active"){
+    throw ApiError.conflict("Poll is already active");
+  }
+
+  poll.status = "active";
+  await poll.save();
+
+  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  const expiryDelayInMiliSecond = new Date(poll.expiresAt?.toString()!).getTime() - Date.now();
+  if(expiryDelayInMiliSecond > 0){
+    await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId?.toString()!);
+  }
+
+  ApiResponse.ok(res, "draft poll is now active");
 })
 
 
@@ -305,8 +363,8 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   const {title, description, expiresAt, questions, allowAnonymous} = req.body;
   const {pollId} = req?.params;
 
-  // step:2 - find the poll using the pollId and update it
-  const poll = await pollModel.findByIdAndUpdate(pollId, {
+  // step:2 - find the poll using the pollId and also poll is created by same user then update it
+  const poll = await pollModel.findOneAndUpdate({_id: pollId, createdBy: req?.user?.id}, {
     title,
     description,
     expiresAt,
@@ -355,7 +413,7 @@ export const getMyPolls = asyncHandler(async (req: AuthRequest, res: Response)=>
   // step:3 find all responses of every polls
   for (const poll of polls) {
     const res = await responseModel.find({pollId: poll._id});
-    pollResponse.push({pollId: poll._id, totalResponse: res.length, expiresAt: poll.expiresAt})
+    pollResponse.push({pollId: poll._id, totalResponse: res.length, expiresAt: poll.expiresAt, status: poll.status})
   }
 
   ApiResponse.ok(res, "polls fetched successfully", {polls, pollResponse});
@@ -372,7 +430,26 @@ export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
     throw ApiError.notFound("Poll not found");
   }
 
+  // step:2 - if the poll is drafted then don't show the poll
+  if(poll.status === "draft"){
+    throw ApiError.unAuthorized("You can't access drafted or private poll");
+  }
+
   ApiResponse.ok(res, "poll fetched successfully", poll);
+})
+
+
+
+export const getMyPollById = asyncHandler(async(req: AuthRequest, res: Response) => {
+    // step:1 - extract pollId from params
+    const pollId = req.params?.pollId;
+
+    const poll = await pollModel.findOne({_id: pollId, createdBy: req?.user?.id});
+    if(!poll){
+      throw ApiError.notFound("Poll not found");
+    }
+  
+    ApiResponse.ok(res, "poll fetched successfully", poll);
 })
 
 
@@ -385,6 +462,10 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   const poll = await pollModel.findById(req?.params.pollId);
   if(!poll){
     throw ApiError.notFound("poll not found");
+  }
+
+  if(poll.status === "draft"){
+    throw ApiError.badRequest("You can't submit draft poll");
   }
 
   // step:3 - check poll is expired or not
@@ -458,10 +539,14 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
 
 
 export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Response)=>{
-  // step:1 - find poll by id, came from params
-  const poll = await pollModel.findById(req?.params.pollId);
+  // step:1 - find poll by id, came from params and also make sure that poll should be created by same user
+  const poll = await pollModel.findOne({_id: req?.params?.pollId, createdBy: req?.user?.id});
   if(!poll){
     throw ApiError.notFound("poll not found");
+  }
+
+  if(poll.status === "draft"){
+    throw ApiError.badRequest("No analytic available of draft poll");
   }
 
   // step:2 - getPollDetailedAnalytics
@@ -474,7 +559,7 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
 
 export const getAnalyticsPageData = asyncHandler(async(req: AuthRequest, res: Response)=> {
   // step1: - find all polls created by the user
-  const polls = await pollModel.find({createdBy: req?.user?.id}).sort({createdAt: -1});
+  const polls = await pollModel.find({createdBy: req?.user?.id, status: "active"}).sort({createdAt: -1});
   if(!polls){
     throw ApiError.notFound("Not Found any poll");
   }
@@ -496,10 +581,10 @@ export const getAnalyticsPageData = asyncHandler(async(req: AuthRequest, res: Re
 
 
 export const deletePollById = asyncHandler(async (req: AuthRequest, res: Response)=> {
-  // step:1 - find poll using the pollId
+  // step:1 - find poll using the pollId ans ensure that poll is created by same user
   const {pollId} = req.params;
 
-  const poll = await pollModel.findById(pollId);
+  const poll = await pollModel.findOne({_id: pollId, createdBy: req?.user?.id});
   if(!poll){
     throw ApiError.notFound("poll not found");
   }
@@ -553,15 +638,15 @@ export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Respo
   // step:1 - extract the pollId from params
   const {pollId} = req?.params;
 
-  // step:2 - find the poll using pollId in the DB
-  const poll = await pollModel.findById(pollId);
+  // step:2 - find the poll using pollId in the DB and check created also by him
+  const poll = await pollModel.findOne({_id: pollId, createdBy: req?.user?.id});
   if(!poll){
     throw ApiError.notFound("poll not found or doesn't exists");
   }
 
   // step:3 - check poll is already published or not
   if(poll.isPublished){
-    ApiResponse.ok(res, "PollResult already published on same link");
+    return ApiResponse.ok(res, "PollResult already published on same link");
   }
 
   // step:4 - make poll result published

@@ -45,6 +45,10 @@ const pollSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  status: {
+    type: String,
+    enum: ["draft", "active"]
+  },
   expiresAt: {
     type: Date
   },

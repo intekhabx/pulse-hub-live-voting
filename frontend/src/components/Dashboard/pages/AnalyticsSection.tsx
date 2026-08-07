@@ -74,8 +74,8 @@ export function AnalyticsSection() {
                   <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r transition-all duration-700 ${
-                        getPollStatus(poll.expiresAt) === "active" ? "from-violet-500 to-fuchsia-500" :
-                        getPollStatus(poll.expiresAt) === "expired" ? "from-gray-600 to-gray-500" :
+                        getPollStatus(poll.expiresAt, poll.status) === "active" ? "from-violet-500 to-fuchsia-500" :
+                        getPollStatus(poll.expiresAt, poll.status) === "expired" ? "from-gray-600 to-gray-500" :
                         "from-amber-500 to-orange-500"
                       }`}
                       style={{ width: `${topPoll ? Math.round((poll.totalVoteCount / topPoll.totalVoteCount) * 100) : 0}%` }}

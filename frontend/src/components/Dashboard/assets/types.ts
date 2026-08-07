@@ -3,7 +3,7 @@
 export interface IPoll {
   _id: string;
   title: string;
-  // status: "active" | "expired" | "draft";
+  status: "active" | "draft";
   questions: IQuestion[];
   description: string;
   createdAt: string;
@@ -16,6 +16,7 @@ export interface IPollResponse {
   pollId: string;
   totalResponse: number;
   expiresAt: string;
+  status: "active" | "draft";
 }
 
 export interface IActivityItem {
@@ -66,6 +67,7 @@ export interface IPollAnalytics {
   createdAt: string;
   expiresAt: string;
   isPublished: boolean;
+  status: "active" | "draft";
   allowAnonymous: boolean;
   createdBy: string;
   analytics: { //analytics is an array of object
@@ -96,5 +98,6 @@ export interface IAnalyticsPageData {
       totalVoteCount: number;
       pollTitle: string;
       expiresAt: string;
+      status: "active" | "draft";
     }[];
 }

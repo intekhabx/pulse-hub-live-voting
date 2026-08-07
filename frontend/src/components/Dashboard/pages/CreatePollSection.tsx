@@ -30,6 +30,7 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
 
   const [isCreating, setIsCreating] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const inputCls = "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-white/[0.03] border border-white/[0.08] outline-none focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/[0.08] transition-all placeholder-gray-600";
   const inputErrCls = "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-rose-500/[0.04] border border-rose-500/50 outline-none focus:border-rose-500/70 focus:ring-4 focus:ring-rose-500/[0.08] transition-all placeholder-gray-600";
@@ -114,6 +115,35 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
       setIsCreating(false);
     }
   };
+
+
+  const handleSaveAsDraft = async () => {
+    const { valid, cleanedQuestions } = validate();
+    if (!valid) {
+      toast.error("Please fix the highlighted fields before saving");
+      return;
+    }
+  
+    setIsSavingDraft(true);
+    try {
+      await pollService.createPollAsDraft({
+        title: title.trim(),
+        description: description.trim(),
+        allowAnonymous,
+        expiresAt,
+        questions: cleanedQuestions,
+      });
+      toast.success("Poll saved as draft");
+      resetForm();
+      setActive("polls"); //redirect to pollSection
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Something went wrong while saving the draft");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
 
   const handleCancel = () => {
     if (isDirty && !window.confirm("Discard this poll? Your changes will be lost.")) {
@@ -389,7 +419,7 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             onClick={handleSubmit}
-            disabled={isCreating}
+            disabled={isCreating || isSavingDraft}
             className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 flex items-center justify-center"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
@@ -405,9 +435,29 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
               "Create & Share Poll"
             )}
           </button>
+
+          <button
+            onClick={handleSaveAsDraft}
+            disabled={isCreating || isSavingDraft}
+            className="flex-1 py-3.5 rounded-xl text-sm font-bold text-gray-300 bg-white/[0.03] border border-white/[0.1] hover:bg-white/[0.06] hover:text-white hover:border-white/20 transition-all disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            {isSavingDraft ? (
+              <>
+                <svg className="animate-spin mr-2" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" />
+                  <path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+                Saving draft…
+              </>
+            ) : (
+              "Save as Draft"
+            )}
+          </button>
+
           <button
             onClick={handleCancel}
-            disabled={isCreating}
+            disabled={isCreating || isSavingDraft}
             className="px-6 py-3.5 rounded-xl text-sm font-semibold text-gray-400 bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.06] hover:text-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >

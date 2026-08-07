@@ -5,16 +5,17 @@ import type { IPoll } from "./assets/types";
 
 interface StatusBadgeProps {
   expiresAt: IPoll["expiresAt"];
+  pollCreationStatus: IPoll["status"];
 }
 
-export function StatusBadge({ expiresAt }: StatusBadgeProps) {
+export function StatusBadge({ expiresAt, pollCreationStatus }: StatusBadgeProps) {
   const map = {
     active: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
     expired: "bg-gray-500/15 text-gray-400 border-gray-500/20",
-    // draft: "bg-amber-500/15 text-amber-400 border-amber-500/20",
+    draft: "bg-amber-500/15 text-amber-400 border-amber-500/20",
   };
 
-  const status = getPollStatus(expiresAt);
+  const status = getPollStatus(expiresAt, pollCreationStatus);
 
   return (
     <span
@@ -25,6 +26,7 @@ export function StatusBadge({ expiresAt }: StatusBadgeProps) {
         className={`w-1.5 h-1.5 rounded-full ${
           status === "active"
             ? "bg-emerald-400 animate-pulse"
+            : status === "draft" ? "bg-amber-400"
             : "bg-gray-500"
         }`}
       />

@@ -139,7 +139,7 @@ export function OverviewSection({ setActive }: OverviewSectionProps) {
                   <div className="text-xs">
                     {poll.createdAt.split("T")[0]}
                   </div>
-                  <StatusBadge expiresAt={poll.expiresAt} />
+                  <StatusBadge expiresAt={poll.expiresAt} pollCreationStatus={poll.status} />
                 </div>
               ))
               : 
