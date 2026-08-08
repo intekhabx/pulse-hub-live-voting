@@ -41,7 +41,7 @@ export const getDashboardData = asyncHandler(async(req: AuthRequest, res: Respon
 
   // step:3 - find total active polls
   const activePolls = polls.filter((poll)=> {
-    return (!poll.expiresAt || (new Date(poll.expiresAt)) > new Date())
+    return (!poll.expiresAt || (new Date(poll.expiresAt)) > new Date()) && poll.status === "active"
   }).length;
 
   // step:4 - find total responses
