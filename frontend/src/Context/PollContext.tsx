@@ -225,6 +225,21 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
   }, [socketReady]);
 
 
+  // temperory basis code io code of pollDetailsSection and viewAndEditPollSection
+  useEffect(()=> {
+    if(!socketReady || !socketRef.current) return;
+
+    socketRef.current.on("server:poll-published", ()=> {
+      fetchRecentActivity();
+      getMyPolls();
+    })
+
+    socketRef.current.on("server:poll-edited", ()=> {
+      fetchRecentActivity();
+      getMyPolls();
+    })
+  }, [socketReady])
+
 
 
   const valueObj = {

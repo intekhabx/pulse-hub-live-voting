@@ -294,7 +294,7 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
   }
 
   // step:5 - send io response to the frontend
-  io.emit("server:poll-created");
+  io.to(`user:${req.user?.id}`).emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfully", {pollId: poll._id});
 })
@@ -321,7 +321,7 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
   
 
-  io.emit("server:poll-created");
+  io.to(`user:${req.user?.id}`).emit("server:poll-created");
 
   ApiResponse.created(res, "poll saved successfully as draft");
 })
@@ -394,6 +394,9 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
 
   // step:6 - add pollUpdated in recent_activity in REDIS
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Updated", icon: "update"});
+
+  // step:7 - send io event to frontend that poll is edited
+  io.to(`user:${userId}`).emit("server:poll-edited");
 
   ApiResponse.ok(res, "poll updated successfully");
 })
@@ -531,7 +534,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
   }
   
   // step:9 - send io response to the poll creator with the pollAnalyticsData
-  io.emit("server:poll-updated", analyticsData);
+  io.to(`user:${poll.createdBy}`).emit("server:poll-updated", analyticsData);
 
   ApiResponse.ok(res, "poll submitted successfully");
 })
@@ -607,7 +610,7 @@ export const deletePollById = asyncHandler(async (req: AuthRequest, res: Respons
   }
 
   // step:6 - send io response to the client
-  io.emit("server:poll-deleted");
+  io.to(`user:${req.user?.id}`).emit("server:poll-deleted");
 
   ApiResponse.ok(res, "Poll deleted successfully");
 })
@@ -644,6 +647,10 @@ export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Respo
     throw ApiError.notFound("poll not found or doesn't exists");
   }
 
+  if(poll.status !== 'active'){
+    throw ApiError.conflict("poll should be active to publish");
+  }
+
   // step:3 - check poll is already published or not
   if(poll.isPublished){
     return ApiResponse.ok(res, "PollResult already published on same link");
@@ -657,6 +664,9 @@ export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Respo
   const userId = req?.user?.id.toString()!;
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Published on same link", icon: "publish"});
 
+  // step:6 - send io response to the frontend that poll is published
+  io.to(`user:${userId}`).emit("server:poll-published");
+
   ApiResponse.ok(res, "Poll result published on same link");
 })
 
@@ -668,7 +678,7 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
 
   // step:2 check poll is published or not
   const poll = await pollModel.findById(pollId);
-  if(!poll || !poll?.isPublished){
+  if(!poll || !poll?.isPublished || poll.status === "draft"){
     throw ApiError.badRequest("poll not found or not published");
   }
 

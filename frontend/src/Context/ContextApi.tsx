@@ -69,14 +69,20 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
   useEffect(()=>{
     socketRef.current = connectWS();
 
-    setSocketReady(true);
-
     socketRef.current.on("connect", ()=> {
-      // console.log('connected', socketRef.current?.id);
-      socketRef.current?.emit("from-client", localStorage.getItem("user"));
+      console.log('connected', socketRef.current?.id);
+      setSocketReady(true);
     })
+
+    socketRef.current.on("disconnect", ()=> {
+      setSocketReady(false);
+    })
+
+    socketRef.current.connect();
+
     return ()=> {
       socketRef.current?.disconnect();
+      socketRef.current = null;
     }
   }, []);
 

@@ -7,14 +7,14 @@ import { io } from "../server";
 export const pollExpiryWorker = new Worker("poll-expiry", async (job: Job)=> {
   try {
     // step:1 - extract pollId that is created
-    console.log(job,"*******", job.data);
+    // console.log(job, job.data);
     const {pollId, userId, pollTitle} = job.data;
   
     // step:2 - whenever poll is expired we have to add in the recentActivity
     await addRecentActivity(userId, {pollId, pollTitle, message: "Poll Expired", icon: "expire"});
 
     // step:3 - ṣend emit to the frontend that poll expire
-    io.emit("server:poll-expired");
+    io.to(`user:${userId}`).emit("server:poll-expired");
   } 
   catch (error) {
     console.error("Poll expiry worker failed:", error);

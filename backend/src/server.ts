@@ -4,6 +4,7 @@ import {Server} from 'socket.io';
 import { createApplication } from './app';
 import dbConnection from './config/db.config';
 import "./workers/pollExpiry.worker";
+import { initializeSocket } from './socket/socket';
 
 
 export const io = new Server();
@@ -18,24 +19,11 @@ async function main(){
     const server = http.createServer(app);
     io.attach(server, {
       cors: {
-        origin: "*"
+        origin: process.env.FRONTEND_BASE_URL || "*"
       }
     });
 
-    io.on("connection", (socket)=>{
-      console.log("a socket is connected", socket.id);
-
-
-      socket.on("from-client", (data)=> {
-        console.log(JSON.parse(data));
-        socket.emit("from-server", "i am a server emitting response");
-      })
-
-
-      socket.on("disconnect", ()=>{
-        console.log("disconnected one socket", socket.id)
-      })
-    })
+    initializeSocket(io);
 
     server.listen(PORT, ()=>{
       console.log(`Server is listening on http://localhost:${PORT}`);
