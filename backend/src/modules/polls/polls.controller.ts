@@ -1,7 +1,7 @@
 import asyncHandler from "../../utils/async-handler.middleware";
 import type { Request, Response } from "express";
 import pollModel from "./polls.model";
-import type { AuthRequest, IRecentActivityData } from "../../types/index.types";
+import type { AuthRequest, IPoll, IRecentActivityData } from "../../types/index.types";
 import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
@@ -265,6 +265,51 @@ export const addRecentActivity = async (userId: string, activity: IRecentActivit
 }
 
 
+const validateRequiredQuestionAndOption = async (poll: IPoll, answers: {questionId: string, optionId: string}[]) => {
+  // step:1 - Validate every submitted answer that user choose only given option or not
+  for (const answer of answers) {
+    const question = poll.questions.find(
+      (q) => q._id.toString() === answer.questionId.toString()
+    );
+
+    if (!question) {
+      // throw new Error("Invalid question");
+      return false;
+    }
+
+    const option = question.options.find(
+      (option) => option._id.toString() === answer.optionId.toString()
+    );
+
+    if (!option) {
+      // throw new Error("Invalid option");
+      return false;
+    }
+  }
+
+  //step:2 - Validate required questions has selected or not
+  const requiredQuestionIds = poll.questions
+    .filter((question) => question.required)
+    .map((question) => question._id.toString());
+
+  const answeredQuestionIds = new Set(
+    answers.map((answer) => answer.questionId.toString())
+  );
+
+  const missingRequiredQuestion = requiredQuestionIds.some(
+    (questionId) => !answeredQuestionIds.has(questionId)
+  );
+
+  if (missingRequiredQuestion) {
+    // throw new Error("Please answer all required questions");
+    return false;
+  }
+
+  return true;
+}
+
+
+
 
 
 
@@ -393,10 +438,7 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   }
 
   // step:6 - add pollUpdated in recent_activity in REDIS
-  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Updated", icon: "update"});
-
-  // step:7 - send io event to frontend that poll is edited
-  io.to(`user:${userId}`).emit("server:poll-edited");
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Edited & Updated", icon: "update"});
 
   ApiResponse.ok(res, "poll updated successfully");
 })
@@ -503,7 +545,13 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     throw ApiError.conflict("you already submitted your vote");
   }
 
-  // step:6 - store response in DB
+  // step:6 validate that all requiredQuestion and their ans are selected
+  const isValidated = validateRequiredQuestionAndOption(poll, answers);
+  if(!isValidated){
+    throw ApiError.badRequest("please answer all required question and select only given option");
+  }
+
+  // step:7 - store response in DB
   if(req?.user?.id){
     await responseModel.create({
       pollId: poll._id,
@@ -519,11 +567,11 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     })
   }
 
-  // step:7 - now add newResponseReceived in recentActivity of the poll creator
+  // step:8 - now add newResponseReceived in recentActivity of the poll creator
   const pollOwner = poll.createdBy?.toString()!;
   await addRecentActivity(pollOwner, {pollId: poll._id.toString(), pollTitle: poll.title, message: "New Response Received", icon: "response"});
 
-  // step:8 - check the redis DB that polAnalyticsData is present or not and if present then update it
+  // step:9 - check the redis DB that polAnalyticsData is present or not and if present then update it
   const key = `poll:${poll._id}`;
   let analyticsData = await updateRedisPollAnalyticsData(key, answers, req?.user?.id?.toString());
 
@@ -533,7 +581,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
   
-  // step:9 - send io response to the poll creator with the pollAnalyticsData
+  // step:10 - send io response to the poll creator with the pollAnalyticsData
   io.to(`user:${poll.createdBy}`).emit("server:poll-updated", analyticsData);
 
   ApiResponse.ok(res, "poll submitted successfully");
@@ -555,7 +603,7 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
   // step:2 - getPollDetailedAnalytics
   const {pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
 
-  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
+  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
 })
 
 
@@ -575,7 +623,7 @@ export const getAnalyticsPageData = asyncHandler(async(req: AuthRequest, res: Re
       anonymousPolls++;
     }
     const totalResponse = await responseModel.find({pollId: poll._id});
-    pollResponses.push({pollId: poll._id, totalVoteCount: totalResponse.length, pollTitle: poll.title, expiresAt: poll.expiresAt})
+    pollResponses.push({pollId: poll._id, totalVoteCount: totalResponse.length, pollTitle: poll.title, expiresAt: poll.expiresAt, status: poll.status})
   }
 
   ApiResponse.ok(res, "analytics page data fetched", {totalPolls: polls.length, anonymousPolls, pollResponses})
@@ -663,9 +711,6 @@ export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Respo
   // step:5 - add pollPublished in recent_activity
   const userId = req?.user?.id.toString()!;
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Published on same link", icon: "publish"});
-
-  // step:6 - send io response to the frontend that poll is published
-  io.to(`user:${userId}`).emit("server:poll-published");
 
   ApiResponse.ok(res, "Poll result published on same link");
 })

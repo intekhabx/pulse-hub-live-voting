@@ -30,3 +30,26 @@ export interface IRecentActivityData {
   message: string;
   icon: "response" | "publish" | "expire" | "create" | "delete" | "update";
 }
+
+
+export interface IPoll {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  description?: string | null;
+  createdBy?: mongoose.Types.ObjectId | string | null;
+  questions: {
+    _id: mongoose.Types.ObjectId;
+    questionText: string;
+    required: boolean;
+    options: {
+      _id: mongoose.Types.ObjectId;
+      optionText: string;
+    }[];
+  }[];
+  allowAnonymous: boolean;
+  status: "active" | "draft";
+  expiresAt?: Date | string | null;
+  isPublished: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}

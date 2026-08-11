@@ -11,16 +11,19 @@ type ContextType = {
   dashboardData: IDashboard | undefined,
   dashboardLoading: boolean,
   recentActivity: IActivityItem[],
+  setRecentActivity: React.Dispatch<React.SetStateAction<IActivityItem[]>>,
   fetchDashboardData: () => Promise<void>,
 
   // pollSection***
   polls: IPoll[],
+  setPolls: React.Dispatch<React.SetStateAction<IPoll[]>>,
   totalPollResponse: IPollResponse[],
   isLoading: boolean,
   handleDelete: (pollId: string)=> void,
 
   // analyticsPageSection***
   pollResponse: IAnalyticsPageData | null,
+  setPollResponse: React.Dispatch<React.SetStateAction<IAnalyticsPageData | null>>,
   error: string | null,
   getAnalyticsPageData: ()=> void,
 
@@ -225,30 +228,18 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
   }, [socketReady]);
 
 
-  // temperory basis code io code of pollDetailsSection and viewAndEditPollSection
-  useEffect(()=> {
-    if(!socketReady || !socketRef.current) return;
 
-    socketRef.current.on("server:poll-published", ()=> {
-      fetchRecentActivity();
-      getMyPolls();
-    })
 
-    socketRef.current.on("server:poll-edited", ()=> {
-      fetchRecentActivity();
-      getMyPolls();
-    })
-  }, [socketReady])
 
 
 
   const valueObj = {
     // overview section***
-    dashboardData, dashboardLoading, recentActivity, fetchDashboardData,
+    dashboardData, dashboardLoading, recentActivity, setRecentActivity, fetchDashboardData,
     // overview section***
-    polls, totalPollResponse, isLoading, handleDelete,
+    polls, setPolls, totalPollResponse, isLoading, handleDelete,
     // analytics page section***
-    pollResponse, error, getAnalyticsPageData,
+    pollResponse, setPollResponse, error, getAnalyticsPageData,
   }
 
   return(

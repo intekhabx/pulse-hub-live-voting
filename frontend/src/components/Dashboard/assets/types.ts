@@ -20,11 +20,11 @@ export interface IPollResponse {
 }
 
 export interface IActivityItem {
-  pollId: number;
+  pollId: string;
   pollTitle: string;
   message: string;
   icon: "response" | "publish" | "expire" | "create" | "delete" | "update";
-  time: string;
+  time: number;
 }
 
 export interface IDashboard {

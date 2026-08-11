@@ -4,7 +4,7 @@ import { StatusBadge } from "../StatusBadge";
 import { ActivityIcon } from "../ActivityIcon";
 import { Icons } from "../Icons";
 import tokenStore from "../../../services/tokenStoreService";
-import { getTimeAgo } from "../../../utils/getTimeAge";
+import { getTimeAgo } from "../../../utils/getTimeAgo";
 import { PollContext } from "../../../Context/PollContext";
 import { Loader } from "../../Loader";
 

@@ -5,6 +5,7 @@ import { StatusBadge } from "../StatusBadge";
 import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
 import toast from "react-hot-toast";
+import { PollContext } from "../../../Context/PollContext";
 
 interface PollDetailsSectionProps {
   pollId: string;
@@ -19,13 +20,25 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   if (!context) {
     throw new Error("DataContext must be used inside ContextApiProvider");
   }
+  const { socketRef, socketReady } = context;
 
-  const { socketRef } = context;
+
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("setRecentActiviy and setPolls should be declared in PollContext");
+  }
+  const {setRecentActivity, setPolls} = pollContext;
+
+
   useEffect(() => {
+    if(socketReady || !socketRef.current) return;
+
     socketRef.current?.on("server:poll-updated", (data) => {
       setPoll(data);
     });
-  }, []);
+
+  }, [socketReady]);
+  
 
   useEffect(() => {
     async function getPoll() {
@@ -50,6 +63,13 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
     try {
       const res = await pollService.publishPollResult(pollId);
       toast.success(res.message || "Poll published");
+
+      // add poll publised in the recent activity
+      if(poll){
+        setRecentActivity((prev)=> [{pollId: pollId, pollTitle: poll.title, message: "Poll Published on same link", icon: "publish", time: Date.now()}, ...prev]);
+      }
+      // update the polls which is published in pollSection
+      setPolls((prev)=> prev.map((poll)=> poll._id === pollId ? {...poll, isPublished: true} : poll));
     } 
     catch (error: any) {
       console.error(error);

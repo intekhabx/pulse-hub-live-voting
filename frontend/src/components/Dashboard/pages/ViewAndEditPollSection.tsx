@@ -1,9 +1,11 @@
 import pollService from "../../../services/pollService";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader } from "../../Loader";
 import { StatusBadge } from "../StatusBadge";
 import { Icons } from "../Icons";
+import { PollContext } from "../../../Context/PollContext";
+import type { IQuestion } from "../assets/types";
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 500;
@@ -37,6 +39,13 @@ interface ViewAndEditSectionProps {
 }
 
 export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProps) {
+
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("setRecentActiviy and setPolls should be declared in PollContext");
+  }
+  const {setRecentActivity, setPolls, setPollResponse} = pollContext;
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -170,10 +179,28 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
       applyState(newSavedState);
       toast.success("Poll updated successfully");
       setIsEditing(false);
-    } catch (error: any) {
+
+      // update the recent_activity that "poll is edited and updated"
+      setRecentActivity((prev)=> [{pollId: pollId, pollTitle: title.trim(), message: "Poll Edited & Updated", icon: "update", time: Date.now()}, ...prev]);
+      // update the pollSection data, whichone is updated
+      setPolls((prev)=> prev.map((poll)=> poll._id === pollId ? {...poll, title, description, allowAnonymous, expiresAt, status, questions: questions as IQuestion[]} : poll));
+      // update pollAnalyticsPage data also if we edit and update an active poll
+      if(status === "active"){
+        setPollResponse((prev)=> {
+          if(!prev) return null;
+  
+          return {
+            ...prev,
+            pollResponses: prev.pollResponses.map((poll)=> poll.pollId === pollId ? {...poll, pollTitle: title, expiresAt, status} : poll)
+          }
+        })
+      }
+    } 
+    catch (error: any) {
       console.error(error);
       toast.error(error.message || "Something went wrong while saving the poll");
-    } finally {
+    } 
+    finally {
       setIsSaving(false);
     }
   };
@@ -191,6 +218,28 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     try {
       await pollService.updatePollAsActive(pollId);
       toast.success("Poll is now active");
+
+      // update only that poll as active which is present in pollSection where all myPolls is showing
+      setPolls((prev) => prev.map((poll) => poll._id === pollId ? {...poll, status: "active"} : poll));
+      // updating the pollsAnalyticsPage data
+      setPollResponse((prev)=> {
+        if(!prev) return null;
+
+        return {
+          totalPolls: prev.totalPolls + 1,
+          anonymousPolls: allowAnonymous ? prev.anonymousPolls + 1 : prev.anonymousPolls,
+          pollResponses: [
+            {
+              pollId: pollId,
+              pollTitle: title,
+              expiresAt: expiresAt,
+              status: "active",
+              totalVoteCount: 0
+            },
+            ...prev.pollResponses
+          ]
+        }
+      })
     } 
     catch (error: any) {
       console.error(error);
