@@ -16,7 +16,7 @@ export function createApplication() {
 
   const limiter = rateLimit({
     windowMs: 1000 * 60 * 15, //15min
-    limit: 100,
+    limit: 500,
     message: "too many request from your IP, please retry after sometime"
   })
 

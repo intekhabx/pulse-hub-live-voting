@@ -7,26 +7,44 @@ import userModel from "./auth.model";
 
 import { type NextFunction, type Request, type Response } from "express";
 import type { IRegisterUser, ILoginUser, AuthRequest } from '../../types/index.types';
+import { sendOtpOnEmail } from '../../services/email/email.service';
+import redis from '../../config/redis.config';
 
 
 function makeTokenHash(token: string){
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function generateOtp(){
+  return crypto.randomInt(100000, 1000000).toString(); //it give me always 6 digit random string (100000 to 999999)
+}
+
 
 export const register = asyncHandler(async (req: Request, res:Response)=>{
+  // step:1 - extract payloadData from body and check user already exists or not
   const {name, email, password}: IRegisterUser = req.body;
 
   const isMatch = await userModel.findOne({email});
   if(isMatch) throw ApiError.conflict("user already registered");
 
+  // step:2 - if the user is new then create a new user with the data
   await userModel.create({
     name,
     email,
     password,
   })
 
-  ApiResponse.created(res, "user registered successfully");
+  // step:3 - generate otp and also make that hashed
+  const otp = generateOtp();
+  const hashedOtp = makeTokenHash(otp);
+
+  // step:4 - hashedOtp store in the redis
+  await redis.set(`otp:${email}`, hashedOtp, "EX", 900); //15min
+  
+  // step:5 - send the otp to the user email
+  await sendOtpOnEmail({otp, email});
+
+  ApiResponse.created(res, "user registered successfully, Please verify your email");
 })
 
 
