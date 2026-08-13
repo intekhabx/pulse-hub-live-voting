@@ -13,11 +13,32 @@ interface ILogin {
   password: string
 }
 
+interface IVerifyOtp {
+  email: string,
+  otp: string,
+}
+
+interface IResendOtp {
+  email: string
+}
+
+
+
 const authService = {
 
     async register({ name, email, password }: IRegister) {
         const res = await api.post("/api/auth/register", { name, email, password });
         return res;
+    },
+
+    async verifyOtp({email, otp}: IVerifyOtp){
+      const res = await api.post("/api/auth/verify-otp", {email, otp});
+      return res;
+    },
+
+    async resendOtp({email}: IResendOtp){
+      const res = await api.post("/api/auth/resend-otp", {email});
+      return res;
     },
 
     async login({email, password}: ILogin){

@@ -10,7 +10,7 @@ interface SendOtpOnEmailParams {
 export const sendOtpOnEmail = async ({email, otp}: SendOtpOnEmailParams) => {
 
   const { data, error } = await resend.emails.send({
-    from: `Pulse Hub <${process.env.RESEND_FROM_EMAIL}>` || "pulsehub@board.com",
+    from: `Pulse Hub <${process.env.RESEND_FROM_EMAIL}>` || "Pulse Hub <onboarding@resend.dev>", //we don't have email sender domain in vercel and render so we user resend testing domain
     to: [email],
     subject: "Verify your Pulse Hub account",
     html: otpEmailTemplate({otp, expiresInMinutes: 15}),

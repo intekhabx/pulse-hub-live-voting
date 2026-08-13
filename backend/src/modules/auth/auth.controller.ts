@@ -20,6 +20,9 @@ function generateOtp(){
 }
 
 
+
+
+
 export const register = asyncHandler(async (req: Request, res:Response)=>{
   // step:1 - extract payloadData from body and check user already exists or not
   const {name, email, password}: IRegisterUser = req.body;
@@ -39,7 +42,8 @@ export const register = asyncHandler(async (req: Request, res:Response)=>{
   const hashedOtp = makeTokenHash(otp);
 
   // step:4 - hashedOtp store in the redis
-  await redis.set(`otp:${email}`, hashedOtp, "EX", 900); //15min
+  const data = JSON.stringify({otp_hash: hashedOtp, purpose: "email_verification", attempts: 0});
+  await redis.set(`otp:${email}`, data, "EX", 900); //15min
   
   // step:5 - send the otp to the user email
   await sendOtpOnEmail({otp, email});
@@ -48,15 +52,93 @@ export const register = asyncHandler(async (req: Request, res:Response)=>{
 })
 
 
+
+export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - extract otp and the user email from the body
+  const {otp, email} = req.body;
+
+  // step:2 - find the hashed otp stored in the redis
+  const rawStoredOtpData = await redis.get(`otp:${email}`);
+  if(!rawStoredOtpData){
+    throw ApiError.unAuthorized("The OTP has expired or is invalid");
+  }
+  const storedOtpData = JSON.parse(rawStoredOtpData);
+
+  // step:3 - make otp hased and compared with stored otp
+  const hashedOtp = makeTokenHash(otp);
+  if(hashedOtp !== storedOtpData.otp_hash && storedOtpData.purpose === "email_verification"){
+    throw ApiError.unAuthorized("The OTP you entered is incorrect");
+  }
+
+  // step:4 - now the otp is right then marks the user as verified
+  await userModel.findOneAndUpdate({email}, {
+    email_verified: true
+  });
+
+  // step:5 - delete the otp from redis DB so it can't be reused
+  await redis.del(`otp:${email}`);
+
+  ApiResponse.ok(res, "Email verified successfully");
+})
+
+
+
+export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
+  // step1: - Extract email from body
+  const { email } = req.body;
+
+  // step:2 - Check if user exists and email is already verified
+  const user = await userModel.findOne({ email });
+  if (!user) {
+    throw ApiError.unAuthorized("No account found with this email. Please create an account first.");
+  }
+
+  if (user.email_verified) {
+    throw ApiError.badRequest("This email is already verified. No OTP resend is required.");
+  }
+
+  // step:3 - Check when the previous OTP was generated
+  const key = `otp:${email}`;
+  const ttl = await redis.ttl(key);
+
+  // Initial TTL = 900 seconds // If TTL > 840, less than 60 seconds have passed
+  if (ttl > 840) {
+    throw ApiError.badRequest("Please wait one minute before requesting another OTP.");
+  }
+
+  // step:4 - Generate a new OTP
+  const otp = generateOtp();
+  const hashedOtp = makeTokenHash(otp);
+
+  // step:5 - Store the new OTP with 15-minute TTL - it modify the old data if present in redis with same key
+  const data = JSON.stringify({otp_hash: hashedOtp, purpose: "email_verification",attempts: 0});
+  await redis.set(key, data, "EX", 900);
+
+  // step:6 - Send OTP to email
+  await sendOtpOnEmail({ email, otp });
+
+  ApiResponse.ok(res, "A new OTP has been sent to your email.");
+});
+
+
+
 export const login = asyncHandler(async (req:Request, res:Response)=>{
+  // step:1 - extract user crediantials from body
   const {email, password}:ILoginUser = req.body;
 
+  // step:2 - find user and verify that user email is verified or not
   const user = await userModel.findOne({email}).select('+password');
   if(!user) throw ApiError.unAuthorized("invalid user credientials");
 
+  if(!user.email_verified){
+    throw ApiError.unAuthorized("Please first verify your email");
+  }
+
+  // step:3 - now email is verified then check the user password
   const verify = await user.comparePassword(password);
   if(!verify) throw ApiError.unAuthorized("invalid user credientials");
 
+  // step:4 - generate access and refresh token and hasedRefreshtoken store in DB
   const accessToken = generateAccessToken({id: user._id, role: user.role});
   const refreshToken = generateRefreshToken({id: user._id})
 
@@ -65,6 +147,7 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
   user.refreshToken = hashedRefreshToken;
   await user.save({validateBeforeSave: false});
 
+  // step:5 - add refreshtoken in the cookies
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -73,6 +156,7 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
     maxAge: 7 * 24 * 60 * 60 * 1000 //7days
   })
 
+  // step:6 - send user details and access token to the frontend
   const userObj = {
     name: user.name,
     email: user.email,
@@ -82,6 +166,7 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken})
 })
+
 
 
 export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
@@ -97,6 +182,7 @@ export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
 
   ApiResponse.ok(res, "user logged-out successfully")
 })
+
 
 
 export const renewToken = asyncHandler(async (req: Request, res: Response, next: NextFunction)=>{
