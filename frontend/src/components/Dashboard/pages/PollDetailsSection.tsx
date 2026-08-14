@@ -31,7 +31,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
 
 
   useEffect(() => {
-    if(socketReady || !socketRef.current) return;
+    if(!socketReady || !socketRef.current) return;
 
     socketRef.current?.on("server:poll-updated", (data) => {
       setPoll(data);

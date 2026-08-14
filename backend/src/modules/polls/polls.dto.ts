@@ -2,10 +2,12 @@ import * as z from 'zod';
 
 
 const optionDto = z.object({
+  _id: z.string().optional(), //id need only for updation
   optionText: z.string().trim().min(1, "Option text is required"),
 });
 
 const questionDto = z.object({
+  _id: z.string().optional(), //id need only for updation
   questionText: z.string().trim().min(1, "Question text is required"),
   options: z.array(optionDto).min(2, "Each question must have at least 2 options"),
   required: z.boolean().optional(),

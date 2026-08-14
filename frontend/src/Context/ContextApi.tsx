@@ -87,13 +87,6 @@ const ContextApiProvider = ({children}: PropsWithChildren) => {
   }, []);
 
 
-  useEffect(()=> {
-    socketRef.current?.on("from-server", (data)=> {
-      console.log(data)
-    })
-  }, []);
-
-
   return (
     <DataContext.Provider value={{dark, toggleTheme, user, setAuthUser, removeAuthUser, socketRef, socketReady}}>
       {children}

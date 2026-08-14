@@ -89,8 +89,7 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
   useEffect(() => {
     if(!socketReady || !socketRef.current) return;
 
-    socketRef.current?.on("server:poll-updated", (data)=> {
-      console.log(data);
+    socketRef.current?.on("server:poll-updated", ()=> {
       // update the totalResponse by one
       setDashboardData((prev)=> prev ? {...prev, totalResponses: prev.totalResponses + 1} : prev);
       // update the recent_activity (by refetching)
