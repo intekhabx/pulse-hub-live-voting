@@ -1,0 +1,14 @@
+Limit	Example	Kya control karta hai
+
+OTP TTL           	15 min     	OTP kitni der valid hai
+OTP attempts      	5          	Ek OTP ko kitni baar guess kar sakte hain
+Resend cooldown   	60 sec     	Naya OTP kitni jaldi mang sakte hain
+Email rate limit  	5/hour     	Ek email par kitne OTP generate ho sakte hain
+IP rate limit     	20/hour    	Ek IP se kitni resend requests aa sakti hain
+
+
+is branch-of-code ko mai alag rakh rha hun kyuki resend ko production me work krne ke liye email domain hona chahiye
+
+baki sab kuch code me sahi h koi problem nhi h
+
+last 3 commit extra h main branch se commit number 38 in main branch tak same h

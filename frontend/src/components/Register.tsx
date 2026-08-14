@@ -249,7 +249,7 @@ export function Register() {
                   Account created! 🎉
                 </p>
                 <p className={`text-sm mt-1 ${dark ? "text-emerald-500" : "text-emerald-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Welcome to PulseHub, {form.name.split(" ")[0]}! Redirecting to Login page
+                  Welcome to PulseHub, {form.name.split(" ")[0]}! Otp is sent on your email
                 </p>
               </div>
             ) : (
