@@ -9,6 +9,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import type { IRegisterUser, ILoginUser, AuthRequest } from '../../types/index.types';
 import { sendOtpOnEmail } from '../../services/email/email.service';
 import redis from '../../config/redis.config';
+import { ERROR_CODES } from '../../constants/error-codes';
 
 
 function makeTokenHash(token: string){
@@ -18,6 +19,21 @@ function makeTokenHash(token: string){
 function generateOtp(){
   return crypto.randomInt(100000, 1000000).toString(); //it give me always 6 digit random string (100000 to 999999)
 }
+
+async function sendOtpAndStoreInDB(email: string){
+  // step:1 - genereate otp and hash them
+  const otp = generateOtp();
+  const hashedOtp = makeTokenHash(otp);
+
+  // step:2 - hashedOtp store in the redis
+  const key = `otp:${email}`;
+  const data = JSON.stringify({otp_hash: hashedOtp, purpose: "email_verification", attempts: 0});
+  await redis.set(key, data, "EX", 900); //15min
+  
+  // step:3 - send otp on the user email
+  await sendOtpOnEmail({otp, email});
+}
+
 
 
 
@@ -58,15 +74,31 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const {otp, email} = req.body;
 
   // step:2 - find the hashed otp stored in the redis
-  const rawStoredOtpData = await redis.get(`otp:${email}`);
-  if(!rawStoredOtpData){
+  const key = `otp:${email}`;
+  const rawOtpData = await redis.get(key);
+  if(!rawOtpData){
     throw ApiError.unAuthorized("The OTP has expired or is invalid");
   }
-  const storedOtpData = JSON.parse(rawStoredOtpData);
+  const otpData = JSON.parse(rawOtpData);
 
-  // step:3 - make otp hased and compared with stored otp
+  // step:3 - make otp hased and compared with stored otp and increase attemps if otp is wrong
   const hashedOtp = makeTokenHash(otp);
-  if(hashedOtp !== storedOtpData.otp_hash && storedOtpData.purpose === "email_verification"){
+  if(hashedOtp !== otpData.otp_hash || otpData.purpose !== "email_verification"){
+
+    otpData.attempts += 1;
+
+    // OTP should expire at its original time
+    const ttl = await redis.ttl(key);
+
+    // Maximum attempts reached
+    if (otpData.attempts >= 3) {
+      await redis.del(key); //delete the otp if 3 attempts done
+      throw ApiError.unAuthorized("Too many incorrect attempts. Please request a new OTP.");
+    }
+
+    // Update attempts without resetting the original expiry
+    await redis.set(key, JSON.stringify(otpData), "EX", ttl);
+
     throw ApiError.unAuthorized("The OTP you entered is incorrect");
   }
 
@@ -76,7 +108,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   });
 
   // step:5 - delete the otp from redis DB so it can't be reused
-  await redis.del(`otp:${email}`);
+  await redis.del(key);
 
   ApiResponse.ok(res, "Email verified successfully");
 })
@@ -97,25 +129,44 @@ export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
     throw ApiError.badRequest("This email is already verified. No OTP resend is required.");
   }
 
-  // step:3 - Check when the previous OTP was generated
+  // step:3 - check previous OTP when it was sent using TTL
   const key = `otp:${email}`;
   const ttl = await redis.ttl(key);
 
-  // Initial TTL = 900 seconds // If TTL > 840, less than 60 seconds have passed
+  // Initial TTL of otp = 900 seconds // If TTL > 840, means abhi less than 60 seconds hue h
   if (ttl > 840) {
     throw ApiError.badRequest("Please wait one minute before requesting another OTP.");
   }
 
-  // step:4 - Generate a new OTP
-  const otp = generateOtp();
-  const hashedOtp = makeTokenHash(otp);
+  // step:4 - check email rate limit (5 resend OTPs per hour)
+  const emailRateLimitKey = `otp:rate:email:${email}`;
 
-  // step:5 - Store the new OTP with 15-minute TTL - it modify the old data if present in redis with same key
-  const data = JSON.stringify({otp_hash: hashedOtp, purpose: "email_verification",attempts: 0});
-  await redis.set(key, data, "EX", 900);
+  const emailRequestCount = await redis.incr(emailRateLimitKey);
 
-  // step:6 - Send OTP to email
-  await sendOtpOnEmail({ email, otp });
+  if(emailRequestCount === 1){
+    await redis.expire(emailRateLimitKey, 3600);
+  }
+
+  if(emailRequestCount > 5){
+    throw ApiError.tooManyRequests("You have requested too many OTPs. Please try again later.");
+  }
+
+  // step:5 - check IP rate limit (20 requests per hour)
+  const ip = req.ip;
+  const ipRateLimitKey = `otp:rate:ip:${ip}`;
+
+  const ipRequestCount = await redis.incr(ipRateLimitKey);
+
+  if(ipRequestCount === 1){
+    await redis.expire(ipRateLimitKey, 3600);
+  }
+
+  if(ipRequestCount > 20){
+    throw ApiError.tooManyRequests("Too many OTP requests from this IP address. Please try again later.");
+  }
+  
+  // step:6 - send new otp and hased otp store in the redis DB
+  await sendOtpAndStoreInDB(email);
 
   ApiResponse.ok(res, "A new OTP has been sent to your email.");
 });
@@ -126,18 +177,19 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
   // step:1 - extract user crediantials from body
   const {email, password}:ILoginUser = req.body;
 
-  // step:2 - find user and verify that user email is verified or not
+  // step:2 - find user and verify user crediantials
   const user = await userModel.findOne({email}).select('+password');
   if(!user) throw ApiError.unAuthorized("invalid user credientials");
 
-  if(!user.email_verified){
-    throw ApiError.unAuthorized("Please first verify your email");
-  }
-
-  // step:3 - now email is verified then check the user password
   const verify = await user.comparePassword(password);
   if(!verify) throw ApiError.unAuthorized("invalid user credientials");
 
+  // step:3 - check user email is verified or not; if not then send the otp to verify
+  if(!user.email_verified){
+    await sendOtpAndStoreInDB(user.email);
+    throw ApiError.unAuthorized("Please verify your email address before logging in.", ERROR_CODES.EMAIL_NOT_VERIFIED);
+  }
+  
   // step:4 - generate access and refresh token and hasedRefreshtoken store in DB
   const accessToken = generateAccessToken({id: user._id, role: user.role});
   const refreshToken = generateRefreshToken({id: user._id})

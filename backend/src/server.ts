@@ -3,8 +3,10 @@ import http from 'node:http';
 import {Server} from 'socket.io';
 import { createApplication } from './app';
 import dbConnection from './config/db.config';
-import "./workers/pollExpiry.worker";
 import { initializeSocket } from './socket/socket';
+import "./workers/pollExpiry.worker";
+import "./workers/unverifiedUserCleanUp.worker";
+import { setupUnverifiedUserCleanupScheduler } from './schedulers/unverifiedUserCleanUp.scheduler';
 
 
 export const io = new Server();
@@ -12,6 +14,8 @@ export const io = new Server();
 async function main(){
   try {
     await dbConnection();
+
+    await setupUnverifiedUserCleanupScheduler(); //scheduler that runs everyday to delete unverified user in mongodb
 
     const PORT:number = Number(process.env.PORT) || 3000;
     const app = createApplication();

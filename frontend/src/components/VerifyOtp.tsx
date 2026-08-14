@@ -6,6 +6,9 @@ import authService from "../services/authService";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60; // seconds
+const MAX_VERIFY_ATTEMPTS = 3;
+const MAX_RESENDS_PER_HOUR = 5;
+const RESEND_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 
 export function VerifyOtp() {
@@ -26,6 +29,22 @@ export function VerifyOtp() {
   const [success, setSuccess] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
 
+  // How many verify attempts are left for the current OTP code.
+  const [attemptsLeft, setAttemptsLeft] = useState(MAX_VERIFY_ATTEMPTS);
+
+  // Timestamps (ms) of resends sent within the last hour, persisted per email
+  // so a page refresh doesn't reset the backend's own 5-per-hour limit.
+  const resendKey = `otp-resend-history:${email}`;
+  const [resendTimestamps, setResendTimestamps] = useState<number[]>(() => {
+    try {
+      const raw = localStorage.getItem(resendKey);
+      const parsed: number[] = raw ? JSON.parse(raw) : [];
+      return parsed.filter((t) => Date.now() - t < RESEND_WINDOW_MS);
+    } catch {
+      return [];
+    }
+  });
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -39,6 +58,11 @@ export function VerifyOtp() {
   }, [cooldown]);
 
   const otp = digits.join("");
+
+  const attemptsExhausted = attemptsLeft <= 0;
+  const resendsUsedThisHour = resendTimestamps.filter((t) => Date.now() - t < RESEND_WINDOW_MS).length;
+  const resendsExhausted = resendsUsedThisHour >= MAX_RESENDS_PER_HOUR;
+  const nextResendUnlockAt = resendsExhausted ? Math.min(...resendTimestamps) + RESEND_WINDOW_MS : null;
 
   const handleDigitChange = (index: number, value: string) => {
     const clean = value.replace(/\D/g, "");
@@ -87,6 +111,8 @@ export function VerifyOtp() {
   };
 
   const handleVerify = async () => {
+    if (attemptsExhausted) return;
+
     if (otp.length < OTP_LENGTH) {
       setError("Enter the full 6-digit code");
       return;
@@ -102,7 +128,17 @@ export function VerifyOtp() {
       }, 1800);
     } 
     catch (err: any) {
-      setError(err.response?.data?.message || "Invalid or expired code. Please try again.");
+      const remaining = attemptsLeft - 1;
+      setAttemptsLeft(remaining);
+
+      if (remaining <= 0) {
+        setError("Too many incorrect attempts. Please resend a new code.");
+      } else {
+        setError(
+          (err.response?.data?.message || "Invalid or expired code. Please try again.") +
+            ` (${remaining} attempt${remaining === 1 ? "" : "s"} left)`
+        );
+      }
       setDigits(Array(OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
     } finally {
@@ -111,13 +147,23 @@ export function VerifyOtp() {
   };
 
   const handleResend = async () => {
-    if (cooldown > 0 || resending) return;
+    if (cooldown > 0 || resending || resendsExhausted) return;
     setResending(true);
     setError("");
     try {
       await authService.resendOtp({ email });
       setCooldown(RESEND_COOLDOWN);
       setDigits(Array(OTP_LENGTH).fill(""));
+      setAttemptsLeft(MAX_VERIFY_ATTEMPTS);
+
+      const updated = [...resendTimestamps.filter((t) => Date.now() - t < RESEND_WINDOW_MS), Date.now()];
+      setResendTimestamps(updated);
+      try {
+        localStorage.setItem(resendKey, JSON.stringify(updated));
+      } catch {
+        // ignore storage errors (e.g. private browsing)
+      }
+
       inputRefs.current[0]?.focus();
     } catch (err: any) {
       setError(err.response?.data?.message || "Couldn't resend the code. Please try again.");
@@ -193,6 +239,13 @@ export function VerifyOtp() {
             </div>
           ) : (
             <>
+              {/* Attempts indicator */}
+              {!attemptsExhausted && attemptsLeft < MAX_VERIFY_ATTEMPTS && (
+                <p className="text-center text-[11px] text-amber-500 mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {attemptsLeft} attempt{attemptsLeft === 1 ? "" : "s"} left for this code
+                </p>
+              )}
+
               {/* OTP boxes */}
               <div className="flex items-center justify-center gap-2 sm:gap-3" onPaste={handlePaste}>
                 {digits.map((digit, i) => (
@@ -203,9 +256,10 @@ export function VerifyOtp() {
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
+                    disabled={attemptsExhausted}
                     onChange={(e) => handleDigitChange(i, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(i, e)}
-                    className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold rounded-xl outline-none transition-all duration-200 border ${
+                    className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold rounded-xl outline-none transition-all duration-200 border disabled:opacity-40 disabled:cursor-not-allowed ${
                       dark ? "bg-white/[0.04] text-white" : "bg-gray-50 text-gray-900"
                     } ${
                       error
@@ -220,8 +274,8 @@ export function VerifyOtp() {
               </div>
 
               {error && (
-                <p className="text-rose-400 text-xs mt-3 flex items-center justify-center gap-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <p className="text-rose-400 text-xs mt-3 flex items-center justify-center gap-1 text-center" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
                     <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                     <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -233,7 +287,7 @@ export function VerifyOtp() {
               {/* Verify button */}
               <button
                 onClick={handleVerify}
-                disabled={loading}
+                disabled={loading || attemptsExhausted}
                 className="w-full mt-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 cursor-pointer"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
@@ -245,6 +299,8 @@ export function VerifyOtp() {
                     </svg>
                     Verifying…
                   </>
+                ) : attemptsExhausted ? (
+                  "Resend required"
                 ) : (
                   <>
                     Verify email
@@ -258,18 +314,30 @@ export function VerifyOtp() {
               {/* Resend */}
               <p className={`text-center text-xs mt-5 ${dark ? "text-gray-600" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 Didn't get the code?{" "}
-                {cooldown > 0 ? (
+                {resendsExhausted ? (
+                  <span className="text-rose-400">
+                    Resend limit reached. Try again{" "}
+                    {nextResendUnlockAt
+                      ? `in ${Math.max(1, Math.ceil((nextResendUnlockAt - Date.now()) / 60000))} min`
+                      : "later"}
+                  </span>
+                ) : cooldown > 0 ? (
                   <span className={dark ? "text-gray-500" : "text-gray-400"}>Resend in {cooldown}s</span>
                 ) : (
                   <button
                     onClick={handleResend}
                     disabled={resending}
-                    className="text-violet-500 hover:text-violet-400 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="text-violet-500 hover:text-violet-400 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {resending ? "Sending…" : "Resend code"}
                   </button>
                 )}
               </p>
+              {!resendsExhausted && (
+                <p className="text-center text-[10px] text-gray-600 mt-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {MAX_RESENDS_PER_HOUR - resendsUsedThisHour} resend{MAX_RESENDS_PER_HOUR - resendsUsedThisHour === 1 ? "" : "s"} left this hour
+                </p>
+              )}
             </>
           )}
 

@@ -66,7 +66,7 @@ export default function Login() {
         const res = await authService.login(form);
         setAuthUser(res.data.user);
         setSuccess(true);
-        // redirect uset to dashboard
+        // redirect user to dashboard
         setTimeout(() => {
           if (next) {
             navigate({ to: next });
@@ -77,12 +77,17 @@ export default function Login() {
         }, 2000);
       } 
       catch (err: any) {
-        console.error(err.message);
+        // console.error(err.message);
         console.log(err.response);
-        console.log(err.response?.data)
-        console.log(err.response?.data.message);
         setServerError(err.response?.data?.message || "Something went wrong")
         setSuccess(false);
+        // ↗️if the error is verify your email then redirect to verify-otp page
+        if(err.response?.data?.code === "EMAIL_NOT_VERIFIED"){
+          navigate({
+            to: "/verify-otp",
+            search: { email: form.email, next },
+          });
+        }
       }
       finally{
         setLoading(false);
