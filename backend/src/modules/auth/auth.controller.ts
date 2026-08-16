@@ -10,6 +10,7 @@ import type { IRegisterUser, ILoginUser, AuthRequest } from '../../types/index.t
 import { googleOAuth2Client } from '../../config/google.config';
 import { google } from 'googleapis';
 import redis from '../../config/redis.config';
+import type { IGithubEmail, IGithubTokenResponse, IGithubUser } from '../../types/github.types';
 
 
 function makeTokenHash(token: string){
@@ -292,3 +293,119 @@ export const exchangeOauthOtp = asyncHandler(async (req: Request, res: Response)
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken});
 })
+
+
+
+// github OAuth login***
+export const githubLogin = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - here we take the authorization endpoint of the github
+  const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
+
+  // step:2 - add params like clinet_id, redirect_uri, scope
+  githubAuthUrl.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID!);
+  githubAuthUrl.searchParams.set("redirect_uri", process.env.GITHUB_CALLBACK_URL!);
+  githubAuthUrl.searchParams.set("scope", "read:user user:email");
+  // read: user ---> user ki profile information access krni hai
+  // user: email ---> kabhi kabhi email private hota h to uske access ke liye
+
+  // step:3 - redirecting the authorization_endpoint of the github
+  res.redirect(githubAuthUrl.toString());
+})
+
+
+export const githubCallback = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - extract the short_code from the query that is coming from github
+  const {code} = req.query;
+
+  if (!code || typeof code !== "string") {
+    throw ApiError.badRequest("Github authorization code is missing");
+  }
+
+  // step:2 - send the short_code, client_secret, client_id and redirect_uri to the github to get access and refreshtoken
+  const bodyPayload = {
+    code: code,
+    client_id: process.env.GITHUB_CLIENT_ID,
+    client_secret: process.env.GITHUB_CLIENT_SECRET,
+    redirect_uri: process.env.GITHUB_CALLBACK_URL
+  }
+
+  const response = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(bodyPayload),
+    });
+  
+  if(!response.ok){
+    throw ApiError.unAuthorized("Failed to exchange GitHub code");
+  }
+
+  const tokenData = await response.json() as IGithubTokenResponse;
+  // console.log(tokenData);
+
+  // step:3 - use access_token and call userinfo_endpoint to get the user details
+  const githubAccessToken = tokenData.access_token
+  const userResponse = await fetch("https://api.github.com/user", {
+      headers: {
+        Accept: "application/vnd.github+json", //mujhe response github json format me chahiye
+        Authorization: `Bearer ${githubAccessToken}`,
+      },
+    });
+
+  // step:4 - if the user email is private then we have to call for the email
+  const emailResponse = await fetch("https://api.github.com/user/emails", {
+      headers: {
+        Authorization: `Bearer ${githubAccessToken}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+  
+  const githubUser = await userResponse.json() as IGithubUser; //yahan mere pass user ki details hogi but agar user ne email ko private rakha hoga to email null hoga to email ke liye ek aur fetch call /user/emails pe call kar chuke h
+  const githubEmails = await emailResponse.json() as IGithubEmail[]; //ye email ka array dega jisme user ke multiple emails ho sakte h usme se primary and verified wla nikalna h
+
+  const primaryEmail = githubEmails.find((item: any) => item.primary && item.verified);
+  if (!primaryEmail) {
+    throw ApiError.unAuthorized("No verified primary email found");
+  }
+
+  // step:5 - find the user with the email that user exists or not in our DB
+  let user = await userModel.findOne({ email: primaryEmail.email });
+  if (!user) {
+    user = await userModel.create({
+      name: githubUser.name || githubUser.login,
+      email: primaryEmail.email,
+      authProvider: "github",
+      providerId: githubUser.id.toString(),
+    });
+  }
+
+  // step:6 - genereate refreshtoken for the user and hasedRefreshtoken store in the DB
+  // if we send user and access_token as json then frontend doens't redirect to dashboard; frontend just shows the json data
+  // so we only send the refreshtoken in cookie and a otp in query and frontend came with that otp and then wwe send the access_token because we can't send access_token (body data) with redirect
+  const refreshToken = generateRefreshToken({id: user._id})
+
+  const hashedRefreshToken = makeTokenHash(refreshToken);
+
+  user.refreshToken = hashedRefreshToken;
+  await user.save({validateBeforeSave: false});
+
+  // step:7 - add refreshtoken in cookie and send accesstoken and userObj as response
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 //7days
+  })
+
+  // step:8 - genereateOtp and store in the redis and send to the frontend route
+  const otp = generateOtp();
+  const hashedOtp = makeTokenHash(otp);
+
+  await redis.set(`login-otp:${user._id}`, hashedOtp, "EX", 120); //2min
+
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/auth/callback?otp=${encodeURIComponent(otp)}`);
+})
+// github OAuth login ends here***

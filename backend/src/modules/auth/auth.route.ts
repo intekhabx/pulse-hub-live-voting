@@ -18,5 +18,8 @@ router.get("/google/callback", controller.googleCallback); //this route use only
 
 router.post("/exchange-otp", validate(exchangeOauthOtpDto), controller.exchangeOauthOtp);
 
+router.get("/github-login", controller.githubLogin); //user clicks "continue with github" and to come this route
+router.get("/github/callback", controller.githubCallback); //this route use only by github to redirection
+
 
 export default router;
