@@ -7,6 +7,8 @@ export interface IUser extends Document{
   email: string;
   password: string;
   role: "user" | "admin";
+  authProvider: "local" | "google" | "github";
+  providerId?: string;
 
   refreshToken: string;
   verificationToken?: string;
@@ -34,10 +36,19 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   password: {
     type: String,
-    required: [true, "password is required"],
+    // required: [true, "password is required"],
     minlength: 8,
     maxlength: 66,
     select: false,
+  },
+  authProvider: {
+    type: String,
+    enum: ["local", "google", "github"],
+    default: "local",
+    required: true
+  },
+  providerId: {
+    type: String
   },
   role:{
     type: String,

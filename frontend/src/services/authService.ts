@@ -37,6 +37,13 @@ const authService = {
       const res = await api.get("/api/auth/user-session");
       return res;
     },
+    
+    async exchangeOauthOtp(otp: string){
+      const {data} = await api.post("/api/auth/exchange-otp", {otp});
+      const {accessToken, user} = data.data;
+      tokenStore.set(accessToken, user);
+      return data;
+    },
 
 }
 
