@@ -3,7 +3,7 @@ import ApiError from "../../utils/api-error.utils";
 import ApiResponse from "../../utils/api-response.utils";
 import asyncHandler from '../../utils/async-handler.middleware';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, type RefreshTokenPayload } from "../../utils/jwt-token.utils";
-import userModel from "./auth.model";
+import userModel, { type IUser } from "./auth.model";
 
 import { type NextFunction, type Request, type Response } from "express";
 import type { IRegisterUser, ILoginUser, AuthRequest } from '../../types/index.types';
@@ -20,6 +20,62 @@ function makeTokenHash(token: string){
 function generateOtp(){
   return crypto.randomInt(100000, 1000000).toString(); //it give me always 6 digit random string (100000 to 999999)
 }
+
+function genereateRandomToken(){
+  return crypto.randomUUID();
+}
+
+
+async function signInUser(res: Response, user: IUser){
+  // step:1 - genereate refreshtoken for the user and hasedRefreshtoken store in the DB
+  // if we send user and access_token as json then frontend doens't redirect to dashboard; frontend just shows the json data
+  // so we only send the refreshtoken in cookie and a otp in query and frontend came with that otp and then wwe send the access_token because we can't send access_token (body data) with redirect
+  const refreshToken = generateRefreshToken({id: user._id})
+
+  const hashedRefreshToken = makeTokenHash(refreshToken);
+
+  user.refreshToken = hashedRefreshToken;
+  await user.save({validateBeforeSave: false});
+
+  // step:2 - add refreshtoken in cookie and send accesstoken and userObj as response
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 //7days
+  })
+
+  // step:3 - genereateOtp and store in the redis and send to the frontend route
+  const otp = generateOtp();
+  const hashedOtp = makeTokenHash(otp);
+
+  await redis.set(`login-otp:${user._id}`, hashedOtp, "EX", 120); //2min
+
+  // agar hmlg normal response return krenge to browser me json show hoga; to 2 option h; ya to html send kro ya redirect kro ek route pe
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/auth/callback?otp=${encodeURIComponent(otp)}`);
+}
+
+
+async function sendTokenForLinking(res: Response, userId: string, providerId: string, provider: "google" | "github", email: string){
+  // step:1 - genereate a random token and make them hash
+  const linkToken = genereateRandomToken();
+  const hashedLinkToken = makeTokenHash(linkToken);
+
+  // step:2 - store userId, providerId and provider in the the redis
+  const key = `token-link:${hashedLinkToken}`;
+  const data = JSON.stringify({userId, providerId, provider});
+  await redis.set(key, data, "EX", 300); //5min
+
+  // step:3 - send the linkToken to the frontend and user email too, to show on page
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/auth/confirm?link_token=${encodeURIComponent(linkToken)}&email=${encodeURIComponent(email)}`)
+}
+
+
+
+
+
+
 
 
 export const register = asyncHandler(async (req: Request, res:Response)=>{
@@ -38,11 +94,19 @@ export const register = asyncHandler(async (req: Request, res:Response)=>{
 })
 
 
+
 export const login = asyncHandler(async (req:Request, res:Response)=>{
   const {email, password}:ILoginUser = req.body;
 
-  const user = await userModel.findOne({email}).select('+password');
+  const user = await userModel.findOne({email}).select('+password +googleId +githubId');
   if(!user) throw ApiError.unAuthorized("invalid user credientials");
+
+  if (!user.password && user.googleId) {
+    throw ApiError.unAuthorized("This account uses Google sign-in. Please continue with Google.");
+  }
+  if(!user.password && user.githubId){
+    throw ApiError.unAuthorized("This account uses Github sign-in. Please continue with Github.");
+  }
 
   const verify = await user.comparePassword(password);
   if(!verify) throw ApiError.unAuthorized("invalid user credientials");
@@ -74,6 +138,7 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
 })
 
 
+
 export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
   const userId = req.user?.id;
   await userModel.findByIdAndUpdate(userId, {$unset: {refreshToken: ""}});
@@ -87,6 +152,7 @@ export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
 
   ApiResponse.ok(res, "user logged-out successfully")
 })
+
 
 
 export const renewToken = asyncHandler(async (req: Request, res: Response, next: NextFunction)=>{
@@ -161,7 +227,6 @@ export const getUserSession = asyncHandler(async(req: AuthRequest, res: Response
 
 
 
-// gogle OAuth login***
 export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
   // step:1 - this function creates a authorization_url with client_id, scope, redirect_uri etc...
   const googleAuthUrl = googleOAuth2Client.generateAuthUrl({
@@ -209,44 +274,30 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   }
 
   // step:5 - find the user with the email that user exists or not
-  let user = await userModel.findOne({ email: data.email });
+  const user = await userModel.findOne({ email: data.email }).select("+googleId");
   if (!user) {
-    user = await userModel.create({
+    const newUser = await userModel.create({
       name: data.name,
       email: data.email,
-      authProvider: "google",
-      providerId: data.id,
+      googleId: data.id,
     });
+    // user new h to uska account create krne ke baad login access de do
+    return await signInUser(res, newUser);
   }
 
-  // step:6 - genereate refreshtoken for the user and hasedRefreshtoken store in the DB
-  // if we send user and access_token as json then frontend doens't redirect to dashboard; frontend just shows the json data
-  // so we only send the refreshtoken in cookie and a otp in query and frontend came with that otp and then wwe send the access_token because we can't send access_token (body data) with redirect
-  const refreshToken = generateRefreshToken({id: user._id})
+  // step:6 - now if user exists with email then check its googleId; if googleId is same then usko v login krne do
+  if (user.googleId === data.id) {
+    return await signInUser(res, user);
+  }
 
-  const hashedRefreshToken = makeTokenHash(refreshToken);
+  // step:7 - if the email found and doesn't have googleId then send request for linking
+  if(!user.googleId){
+    return await sendTokenForLinking(res, user._id.toString(), data.id, "google", user.email);
+  }
 
-  user.refreshToken = hashedRefreshToken;
-  await user.save({validateBeforeSave: false});
-
-  // step:7 - add refreshtoken in cookie and send accesstoken and userObj as response
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 //7days
-  })
-
-  // step:8 - genereateOtp and store in the redis and send to the frontend route
-  const otp = generateOtp();
-  const hashedOtp = makeTokenHash(otp);
-
-  await redis.set(`login-otp:${user._id}`, hashedOtp, "EX", 120); //2min
-
-  res.redirect(`${process.env.FRONTEND_BASE_URL}/auth/callback?otp=${encodeURIComponent(otp)}`);
+  // step:8 - now if the googleId doesn't match then reject the login
+  throw ApiError.conflict("This account is linked to another Google account.");
 })
-// google OAuth login ends here***
 
 
 
@@ -296,7 +347,82 @@ export const exchangeOauthOtp = asyncHandler(async (req: Request, res: Response)
 
 
 
-// github OAuth login***
+export const linkOauthAccount = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - extract the link_token and the password from body
+  const {link_token, password} = req.body;
+
+  // step:2 - create the link_token hashed to find the data in the redis
+  const hashed_link_token = makeTokenHash(link_token);
+  const key = `token-link:${hashed_link_token}`;
+  const rawData = await redis.get(key);
+  if(!rawData){
+    throw ApiError.badRequest("invalid or expired token link");
+  }
+
+  const {userId, providerId, provider} = JSON.parse(rawData);
+  
+  // step:3 - find user and check the password is correct or not
+  const user = await userModel.findById(userId).select('+password +googleId +githubId');
+  if(!user) throw ApiError.unAuthorized("invalid user credientials");
+
+  const verify = await user.comparePassword(password);
+  if(!verify) throw ApiError.unAuthorized("invalid user credientials");
+
+  // step:4 - now the password is correct so link the user with oauth service ("google" | "github")
+  if(provider === "google"){
+    if(user.googleId){ //googleId pehle hi exist krta h to error do
+      throw ApiError.badRequest("Google account is already linked");
+    }
+
+    user.googleId = providerId;
+  }
+  else if(provider === "github"){
+    if(user.githubId){ //googleId pehle hi exist krta h to error do
+      throw ApiError.badRequest("Github account is already linked");
+    }
+
+    user.githubId = providerId;
+  }
+  else{
+    throw ApiError.badRequest("unsupported oauth provider");
+  }
+
+  await user.save();
+
+  // step:5 - delete the token record from redis
+  await redis.del(key);
+
+  // step:6 - genereate access and refreshtoken for the user and store in the db
+  const accessToken = generateAccessToken({id: user._id, role: user.role});
+  const refreshToken = generateRefreshToken({id: user._id})
+
+  const hashedRefreshToken = makeTokenHash(refreshToken);
+
+  // select: false se woh data query me nhi aata h but update kr sakte h data ko
+  user.refreshToken = hashedRefreshToken;
+  await user.save({validateBeforeSave: false});
+
+  // step:7 - add refershtoken in the cookie and send user and accesstoken as response
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 //7days
+  })
+
+  const userObj = {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userId: user._id
+  }
+
+  ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken})
+})
+
+
+
 export const githubLogin = asyncHandler(async (req: Request, res: Response) => {
   // step:1 - here we take the authorization endpoint of the github
   const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
@@ -311,6 +437,7 @@ export const githubLogin = asyncHandler(async (req: Request, res: Response) => {
   // step:3 - redirecting the authorization_endpoint of the github
   res.redirect(githubAuthUrl.toString());
 })
+
 
 
 export const githubCallback = asyncHandler(async (req: Request, res: Response) => {
@@ -371,41 +498,27 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
   }
 
   // step:5 - find the user with the email that user exists or not in our DB
-  let user = await userModel.findOne({ email: primaryEmail.email });
+  const user = await userModel.findOne({ email: primaryEmail.email });
   if (!user) {
-    user = await userModel.create({
+    const newUser = await userModel.create({
       name: githubUser.name || githubUser.login,
       email: primaryEmail.email,
-      authProvider: "github",
-      providerId: githubUser.id.toString(),
+      githubId: githubUser.id.toString(),
     });
+    // user new h to uska account create krne ke baad login access de do
+    return await signInUser(res, newUser);
   }
 
-  // step:6 - genereate refreshtoken for the user and hasedRefreshtoken store in the DB
-  // if we send user and access_token as json then frontend doens't redirect to dashboard; frontend just shows the json data
-  // so we only send the refreshtoken in cookie and a otp in query and frontend came with that otp and then wwe send the access_token because we can't send access_token (body data) with redirect
-  const refreshToken = generateRefreshToken({id: user._id})
+  // step:6 - now if user exists with email then check its githubId; if githubId is same then usko v login krne do
+  if (user.githubId === githubUser.id.toString()) {
+    return await signInUser(res, user);
+  }
 
-  const hashedRefreshToken = makeTokenHash(refreshToken);
+  // step:7 - if the email found and doesn't have githubId then send request for linking
+  if(!user.githubId){
+    return await sendTokenForLinking(res, user._id.toString(), githubUser.id.toString(), "github", user.email);
+  }
 
-  user.refreshToken = hashedRefreshToken;
-  await user.save({validateBeforeSave: false});
-
-  // step:7 - add refreshtoken in cookie and send accesstoken and userObj as response
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 //7days
-  })
-
-  // step:8 - genereateOtp and store in the redis and send to the frontend route
-  const otp = generateOtp();
-  const hashedOtp = makeTokenHash(otp);
-
-  await redis.set(`login-otp:${user._id}`, hashedOtp, "EX", 120); //2min
-
-  res.redirect(`${process.env.FRONTEND_BASE_URL}/auth/callback?otp=${encodeURIComponent(otp)}`);
+  // step:8 - now if the googleId doesn't match then reject the login
+  throw ApiError.conflict("This account is linked to another Github account.");
 })
-// github OAuth login ends here***

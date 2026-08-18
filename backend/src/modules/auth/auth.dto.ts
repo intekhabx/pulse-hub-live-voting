@@ -19,3 +19,9 @@ export const loginDto = z.object({
 export const exchangeOauthOtpDto = z.object({
   otp: z.string().regex(/^\d{6}$/, "otp must contains exactly 6 digit"),
 })
+
+
+export const linkOauthAccountDto = z.object({
+  link_token: z.string(),
+  password: z.string().min(8, "password should be 8 character minimum").max(66).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/, "password should contain capital, small number and a special character"),
+})

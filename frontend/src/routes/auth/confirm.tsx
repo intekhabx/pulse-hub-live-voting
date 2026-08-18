@@ -1,15 +1,16 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { AuthCallback } from '../../components/AuthCallback'
+import { ConfirmAccountLink } from '../../components/ConfirmAccountLink'
 import tokenStore from '../../services/tokenStoreService';
 
-export const Route = createFileRoute('/auth/callback')({
+
+export const Route = createFileRoute('/auth/confirm')({
 
   validateSearch: (search) => ({
-    otp: (search.otp as string) ?? "",
-    next: search.next as string | undefined,
+    link_token: (search.link_token as string) ?? "",
+    email: (search.email as string) ?? "",
   }),
 
-  // /auth/callback route dones'nt open after login
+  // /auth/callback route doesn't open after login
   beforeLoad: () => {
     const accessToken = tokenStore.getAccessToken();
     if (accessToken) {
@@ -22,6 +23,6 @@ export const Route = createFileRoute('/auth/callback')({
 
 function RouteComponent() {
   return (
-    <AuthCallback />
+    <ConfirmAccountLink />
   )
 }

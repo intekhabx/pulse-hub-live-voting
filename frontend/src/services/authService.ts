@@ -45,6 +45,13 @@ const authService = {
       return data;
     },
 
+    async linkOauthAccount(link_token: string, password: string){
+      const {data} = await api.post("/api/auth/link-oauth-account", {link_token, password});
+      const {accessToken, user} = data.data;
+      tokenStore.set(accessToken, user);
+      return data;
+    },
+
 }
 
 export default authService;

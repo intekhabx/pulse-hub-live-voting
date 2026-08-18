@@ -77,9 +77,7 @@ export default function Login() {
         }, 2000);
       } 
       catch (err: any) {
-        console.error(err.message);
-        console.log(err.response);
-        console.log(err.response?.data)
+        // console.error(err.message);
         console.log(err.response?.data.message);
         setServerError(err.response?.data?.message || "Something went wrong")
         setSuccess(false);

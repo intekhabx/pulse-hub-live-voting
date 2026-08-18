@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VotesPollIdRouteImport } from './routes/votes/$pollId'
+import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DashboardPollPollIdRouteImport } from './routes/dashboard/poll/$pollId'
 import { Route as DashboardPollEditPollIdRouteImport } from './routes/dashboard/poll-edit/$pollId'
@@ -43,6 +44,11 @@ const VotesPollIdRoute = VotesPollIdRouteImport.update({
   path: '/votes/$pollId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/votes/$pollId': typeof VotesPollIdRoute
   '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/votes/$pollId': typeof VotesPollIdRoute
   '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/votes/$pollId': typeof VotesPollIdRoute
   '/dashboard/poll-edit/$pollId': typeof DashboardPollEditPollIdRoute
   '/dashboard/poll/$pollId': typeof DashboardPollPollIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/auth/callback'
+    | '/auth/confirm'
     | '/votes/$pollId'
     | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/auth/callback'
+    | '/auth/confirm'
     | '/votes/$pollId'
     | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/auth/callback'
+    | '/auth/confirm'
     | '/votes/$pollId'
     | '/dashboard/poll-edit/$pollId'
     | '/dashboard/poll/$pollId'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
   VotesPollIdRoute: typeof VotesPollIdRoute
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/votes/$pollId'
       fullPath: '/votes/$pollId'
       preLoaderRoute: typeof VotesPollIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -213,6 +233,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
   VotesPollIdRoute: VotesPollIdRoute,
 }
 export const routeTree = rootRouteImport
