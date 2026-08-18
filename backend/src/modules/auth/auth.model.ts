@@ -5,10 +5,12 @@ import bcrypt from "bcryptjs";
 export interface IUser extends Document{
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: "user" | "admin";
+  googleId?: string;
+  githubId?: string;
 
-  refreshToken: string;
+  refreshToken?: string;
   verificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordTokenExpires?: Date;
@@ -34,10 +36,22 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   password: {
     type: String,
-    required: [true, "password is required"],
+    // required: [true, "password is required"],
     minlength: 8,
     maxlength: 66,
     select: false,
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    select: false,
+    sparse: true, //mongodb sirf us account ko index krega jisme googleId hoga
+  },
+  githubId: {
+    type: String,
+    unique: true,
+    select: false,
+    sparse: true, //mongodb sirf us account ko index krega jisme githubId hoga
   },
   role:{
     type: String,
@@ -57,11 +71,13 @@ const userSchema = new mongoose.Schema<IUser>({
 //save hased password in db whenever password field will modify
 userSchema.pre('save', async function(){
   if(!this.isModified('password')) return;
+  if(!this.password) return;
   this.password = await bcrypt.hash(this.password, 10);
 })
 
 //method to compare plain and hashedPassword
 userSchema.methods.comparePassword = async function(plainTextPassword:string): Promise<boolean>{
+  if(!this.password) return false;
   return await bcrypt.compare(plainTextPassword, this.password);
 }
 
