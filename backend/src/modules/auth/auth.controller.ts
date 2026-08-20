@@ -131,7 +131,10 @@ export const login = asyncHandler(async (req:Request, res:Response)=>{
     name: user.name,
     email: user.email,
     role: user.role,
-    userId: user._id
+    userId: user._id,
+    isPasswordExists: password ? true : false,
+    isGoogleLinked: user.googleId ? true : false,
+    isGithubLinked: user.githubId ? true : false,
   }
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken})
@@ -190,6 +193,77 @@ export const renewToken = asyncHandler(async (req: Request, res: Response, next:
   })
 
   ApiResponse.ok(res, "token refreshed successfully", {accessToken: newAccessToken})
+})
+
+
+
+export const updateUserDetails = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:1 - extract the name and email that user want to update
+  const {name, email} = req.body;
+  const userId = req.user?.id;
+
+  // step:2 - if email is present then check other user have already registered with same email or not
+  if (email) {
+    const existingUser = await userModel.findOne({email, _id: { $ne: userId }}); //$ne - not equal
+
+    if (existingUser){
+      throw ApiError.conflict("Email already in use");
+    }
+  }
+
+  // step:3 - find the user useing req.user.id and update with new details
+  const user = await userModel.findByIdAndUpdate(userId, {
+      name,
+      email,
+    },{returnDocument: "after", runValidators: true,}).select("+password +googleId +githubId");
+
+  if (!user) {
+    throw ApiError.notFound("User not found");
+  }
+
+  // step:4 - send only non-sensitive data to the frontend
+  const userObj = {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userId: user._id,
+    isPasswordExists: user.password ? true : false,
+    isGoogleLinked: user.googleId ? true : false,
+    isGithubLinked: user.githubId ? true : false,
+  }
+
+  ApiResponse.ok(res, "user details updated successfully", {user: userObj});
+})
+
+
+
+export const updateUserPassword = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - extract the newPassword and currentPassword from body
+  const {newPassword, currentPassword} = req.body;
+
+  // step:2 - find the user using the req.user.id
+  const user = await userModel.findById(req.user?.id).select("+password +googleId +githubId");
+  if(!user || (!user.password && !user.googleId && !user.githubId)){
+    throw ApiError.unAuthorized("user doesn't exists");
+  }
+
+  // step:3 - currentPassword should be required when password is already present in the DB
+  if (user.password) {
+    if (!currentPassword) {
+      throw ApiError.badRequest("please provide current password");
+    }
+  
+    const isValid = await user.comparePassword(currentPassword);
+    if (!isValid) {
+      throw ApiError.unAuthorized("invalid or incorrect password");
+    }
+  }
+
+  // step:4 - now the current password is same so we update the currectPassword to newPassword || this user sets their password first time
+  user.password = newPassword;
+  await user.save();
+
+  ApiResponse.ok(res, "password updated successfully");
 })
 
 
@@ -310,7 +384,7 @@ export const exchangeOauthOtp = asyncHandler(async (req: Request, res: Response)
   // step:2 - verifyRefreshToken, to ensure, it is genereated through our secret
   const decoded = verifyRefreshToken(refreshToken) as RefreshTokenPayload;
   // we find user with decoded value, if user found then it is right
-  const user = await userModel.findById(decoded.id).select("+refreshToken");
+  const user = await userModel.findById(decoded.id).select("+refreshToken +password +googleId +githubId");
   if(!user) throw ApiError.unAuthorized("invalid refresh token");
 
   // step:3 - make refresh token hashed to compare both refreshToken
@@ -339,7 +413,10 @@ export const exchangeOauthOtp = asyncHandler(async (req: Request, res: Response)
     name: user.name,
     email: user.email,
     role: user.role,
-    userId: user._id
+    userId: user._id,
+    isPasswordExists: user.password ? true : false,
+    isGoogleLinked: user.googleId ? true : false,
+    isGithubLinked: user.githubId ? true : false,
   }
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken});
@@ -415,7 +492,10 @@ export const linkOauthAccount = asyncHandler(async (req: Request, res: Response)
     name: user.name,
     email: user.email,
     role: user.role,
-    userId: user._id
+    userId: user._id,
+    isPasswordExists: user.password ? true : false,
+    isGoogleLinked: (user.googleId || provider === "google") ? true : false,
+    isGithubLinked: (user.githubId || provider === "github") ? true : false,
   }
 
   ApiResponse.ok(res, "user logged in successfully", {user: userObj, accessToken})

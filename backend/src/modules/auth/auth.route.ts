@@ -2,7 +2,7 @@ import express from 'express';
 import * as controller from "./auth.controller";
 import { isLoggedIn } from './auth.middleware';
 import validate from '../../middleware/validate.middleware';
-import { exchangeOauthOtpDto, linkOauthAccountDto, loginDto, registerDto } from './auth.dto';
+import { exchangeOauthOtpDto, linkOauthAccountDto, loginDto, registerDto, updateUserDetailsDto, updateUserPasswordDto } from './auth.dto';
 
 const router = express.Router();
 
@@ -10,6 +10,8 @@ router.post("/register", validate(registerDto), controller.register);
 router.post("/login", validate(loginDto), controller.login);
 router.post("/logout", isLoggedIn, controller.logout);
 router.post("/refresh-token", controller.renewToken);
+router.patch("/update-user", validate(updateUserDetailsDto), isLoggedIn, controller.updateUserDetails);
+router.patch("/update-password", validate(updateUserPasswordDto), isLoggedIn, controller.updateUserPassword);
 
 router.get("/user-session", controller.getUserSession);
 

@@ -4,6 +4,11 @@ const USER_KEY = "user";
 interface IUser {
   name: string,
   email: string,
+  role: "user" | "admin",
+  userId: string,
+  isPasswordExists: boolean,
+  isGoogleLinked: boolean,
+  isGithubLinked: boolean,
 }
 
 
