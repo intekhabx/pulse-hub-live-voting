@@ -59,8 +59,6 @@ export function SettingsSection() {
     google: isGoogleLinked,
     github: isGithubLinked,
   });
-  const toggleConnection = (key: keyof typeof connections) =>
-    setConnections((c) => ({ ...c, [key]: !c[key] }));
 
   const sessions = [
     { device: "MacBook Pro · Chrome", location: "Kolkata, IN", current: true },
@@ -216,7 +214,16 @@ export function SettingsSection() {
                   <p className="text-xs text-gray-500" style={fontBody}>{sub}</p>
                 </div>
                 <button
-                  onClick={() => toggleConnection(key)}
+                  onClick={() => {
+                    if(connections[key]){
+                      // disconnect
+                      // window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/${key}-connect`
+                    }
+                    else{
+                      // connect
+                      window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/${key}-connect`
+                    }
+                  }}
                   className={`text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors flex-shrink-0 ${
                     connections[key]
                       ? "text-rose-400 border border-rose-500/30 hover:bg-rose-500/10"

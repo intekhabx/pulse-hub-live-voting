@@ -24,5 +24,12 @@ router.post("/link-oauth-account", validate(linkOauthAccountDto), controller.lin
 router.get("/github-login", controller.githubLogin); //user clicks "continue with github" and to come this route
 router.get("/github/callback", controller.githubCallback); //this route use only by github to redirection
 
+// user-oauth-account-connect
+router.get("/google-connect", isLoggedIn, controller.googleConnect);
+router.get("/google-connect/callback", controller.googleConnectCallback);
+
+router.get("/github-connect", isLoggedIn, controller.githubConnect);
+router.get("/github-connect/callback", controller.githubConnectCallback);
+
 
 export default router;

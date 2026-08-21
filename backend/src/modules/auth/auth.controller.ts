@@ -602,3 +602,182 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
   // step:8 - now if the googleId doesn't match then reject the login
   throw ApiError.conflict("This account is linked to another Github account.");
 })
+
+
+
+export const googleConnect = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - generate the state and store in the redis for csrf protection
+  const state = genereateRandomToken();
+  await redis.set(`oauth-connect-state:${state}`, req.user?.id.toString()!, "EX", 300); // 5 min
+
+  // step:2 - build the authorization_endpoint url
+  const url = googleOAuth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["openid", "email", "profile"],
+    prompt: "select_account",
+    state,
+    redirect_uri: process.env.GOOGLE_CONNECT_CALLBACK_URL,
+  });
+
+  // step:3 - redirect to the authorization_endpoint
+  res.redirect(url);
+});
+
+
+
+export const googleConnectCallback = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - extract the short_code and state that is comming from google
+  const { code, state } = req.query;
+  if (!code || typeof code !== "string") throw ApiError.badRequest("code missing");
+  if (!state || typeof state !== "string") throw ApiError.badRequest("state missing");
+
+  // step:2 - check the state is right or not by finding the state in redis
+  const key = `oauth-connect-state:${state}`;
+  const userId = await redis.get(key);
+  if (!userId) {
+    await redis.del(key);
+    throw ApiError.badRequest("invalid or expired connect session");
+  }
+
+  await redis.del(key); //delete the used state
+
+  // step:3 - send the short_code, redirect_uri (client_id AND secret- is in config) to the google and get tokens
+  const { tokens } = await googleOAuth2Client.getToken({code: code, redirect_uri: process.env.GOOGLE_CONNECT_CALLBACK_URL});
+  googleOAuth2Client.setCredentials(tokens);
+
+  // step:4 - get the user profile details
+  const oauth2 = google.oauth2({
+    auth: googleOAuth2Client,
+    version: "v2",
+    // we have already set the credentials in googleOAuth2Client so we don't need to send access_token explicitly
+  });
+
+  const { data } = await oauth2.userinfo.get();
+  if (!data || !data?.id){
+    throw ApiError.unAuthorized("could not fetch google profile");
+  }
+
+  // step:5 - checking ye googleId kisi aur account se pehle se linked to nahi?
+  const existing = await userModel.findOne({ googleId: data.id });
+  if (existing && existing._id.toString() !== userId) {
+    return res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connect_error=already_linked`);
+  }
+
+  // step:6 - new the googleId is not registered with anyone then connect to the user
+  const user = await userModel.findById(userId);
+  if (!user) throw ApiError.unAuthorized("user not found");
+
+  // if user has already connected their google account
+  if (user.googleId) {
+    return res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connect_error=google_already_connected`);
+  }
+  
+  user.googleId = data.id;
+  await user.save();
+
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connected=google`);
+});
+
+
+
+export const githubConnect = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - generate a random state and store in the redis
+  const state = genereateRandomToken();
+  await redis.set(`oauth-connect-state:${state}`, req.user?.id.toString()!, "EX", 300); //5min
+
+  // step:2 - here we take the authorization endpoint of the github
+  const url = new URL("https://github.com/login/oauth/authorize");
+
+  // step:3 - add params like clinet_id, redirect_uri, scope
+  url.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID!);
+  url.searchParams.set("redirect_uri", process.env.GITHUB_CONNECT_CALLBACK_URL!);
+  url.searchParams.set("scope", "read:user user:email");
+  url.searchParams.set("state", state);
+  // read: user ---> user ki profile information access krni hai
+  // user: email ---> kabhi kabhi email private hota h to uske access ke liye
+
+  // step:4 - redirecting the authorization_endpoint of the github
+  res.redirect(url.toString());
+})
+
+
+
+export const githubConnectCallback = asyncHandler(async (req: Request, res: Response) => {
+  // step:1 - extract the short_code and the state from the query that is coming from github
+  const {code, state} = req.query;
+
+  if (!code || typeof code !== "string") throw ApiError.badRequest("code missing");
+  if (!state || typeof state !== "string") throw ApiError.badRequest("state missing");
+
+  // step:2 - check the state is same or not that is stored in the redis
+  const key = `oauth-connect-state:${state}`;
+  const userId = await redis.get(key);
+  if (!userId) {
+    await redis.del(key);
+    throw ApiError.badRequest("invalid or expired connect session");
+  }
+
+  await redis.del(key); //delete the used state
+
+  // step:3 - send the short_code, client_secret, client_id and redirect_uri to the github to get access and refreshtoken
+  const bodyPayload = {
+    code: code,
+    client_id: process.env.GITHUB_CLIENT_ID,
+    client_secret: process.env.GITHUB_CLIENT_SECRET,
+    redirect_uri: process.env.GITHUB_CONNECT_CALLBACK_URL,
+  }
+
+  const response = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(bodyPayload),
+    });
+  
+  if(!response.ok){
+    throw ApiError.unAuthorized("Failed to exchange GitHub code");
+  }
+
+  const tokens = await response.json() as IGithubTokenResponse;
+  // console.log(tokens);
+  if(!tokens.access_token){
+    throw ApiError.unAuthorized("GitHub access token missing");
+  }
+
+  // step:4 - use access_token and call userinfo_endpoint to get the user details
+  const githubAccessToken = tokens.access_token
+  const userResponse = await fetch("https://api.github.com/user", {
+      headers: {
+        Accept: "application/vnd.github+json", //mujhe response github json format me chahiye
+        Authorization: `Bearer ${githubAccessToken}`,
+      },
+    });
+
+  if (!userResponse.ok) {
+    throw ApiError.unAuthorized("Failed to fetch GitHub user");
+  }
+  
+  const githubUser = await userResponse.json() as IGithubUser; //yahan mere pass user ki details hogi but agar user ne email ko private rakha hoga to email null hoga to email ke liye ek aur fetch call /user/emails pe call kar chuke h
+
+  // step:5 - checking ye githubId kisi aur account se pehle se linked to nahi?
+  const existing = await userModel.findOne({ githubId: githubUser.id.toString() });
+  if (existing && existing._id.toString() !== userId) {
+    return res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connect_error=already_linked`);
+  }
+
+  // step:6 - now the githubId is not registered with anyone then connect to the user
+  const user = await userModel.findById(userId);
+  if (!user) throw ApiError.unAuthorized("user not found");
+
+  // if user has already connected their github account
+  if (user.githubId) {
+    return res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connect_error=github_already_connected`);
+  }
+  
+  user.githubId = githubUser.id.toString();
+  await user.save();
+
+  res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connected=github`);
+})
