@@ -228,14 +228,20 @@ export const getUserSession = asyncHandler(async(req: AuthRequest, res: Response
 
 
 export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
-  // step:1 - this function creates a authorization_url with client_id, scope, redirect_uri etc...
+  // step:1 - generate the state and store in the redis for csrf protection
+  const state = genereateRandomToken();
+  await redis.set(`oauth-login-state:${state}`, "1", "EX", 300); // 5 min
+
+  // step:2 - this function creates a authorization_url with client_id, scope, redirect_uri etc...
   const googleAuthUrl = googleOAuth2Client.generateAuthUrl({
     access_type: "offline", // user jab offline ho jaye to v uske behalf pe refresh_token ka use kar sake google API ke saath
     scope: ["openid", "email", "profile"],
-    prompt: "select_account" //User ko account selection screen dikhao email ka choose krne ke liye agar ek se jyda email h to
+    prompt: "select_account", //User ko account selection screen dikhao email ka choose krne ke liye agar ek se jyda email h to
+    redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+    state
   });
 
-  // step:2 - redirect to the authorization_endpoint through our backend
+  // step:3 - redirect to the authorization_endpoint through our backend
   // console.log(googleAuthUrl);
   res.redirect(googleAuthUrl);
 })
@@ -243,24 +249,33 @@ export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
 
 
 export const googleCallback = asyncHandler(async (req: Request, res: Response) => {
-  // step:1 - extract the short_code from the query that is coming from google
-  const {code} = req.query;
+  // step:1 - extract the short_code and state from the query that is coming from google
+  const { code, state } = req.query;
 
-  if (!code || typeof code !== "string") {
-    throw ApiError.badRequest("Google authorization code is missing");
+  if (!code || typeof code !== "string") throw ApiError.badRequest("Google authorization code is missing");
+  if (!state || typeof state !== "string") throw ApiError.badRequest("Google authorization state is missing");
+
+  // step:2 - check the state is right or not by finding the state in redis
+  const key = `oauth-login-state:${state}`;
+  const isValidState = await redis.get(key);
+  if (!isValidState) {
+    await redis.del(key);
+    throw ApiError.badRequest("invalid or expired login session");
   }
 
-  // step:2 - send the short_code, client_secret to the google and get tokens (client_secret, client_id and redirect_uri saath me send ho rha h jo hmne googleOAuth2Client config krte hue diya tha)
-  const { tokens } = await googleOAuth2Client.getToken(code);
+  await redis.del(key); //delete the used state
+
+  // step:3 - send the short_code, client_secret, and redirect_uri to the google and get tokens (client_secret, client_id saath me send ho rha h jo hmne googleOAuth2Client config krte hue diya tha)
+  const { tokens } = await googleOAuth2Client.getToken({code: code, redirect_uri: process.env.GOOGLE_CALLBACK_URL});
   // console.log(tokens);
 
-  // step:3 - Set the received tokens on the OAuth client.
+  // step:4 - Set the received tokens on the OAuth client.
   // This is NOT required for Google login.
   // It is only needed if we want to use the OAuth client later
   // to make authenticated requests to other Google services/APIs. like calender , gmail etc.
   googleOAuth2Client.setCredentials(tokens);
 
-  // step:4 - get the authenticated user profile details
+  // step:5 - get the authenticated user profile details
   const oauth2 = google.oauth2({
     auth: googleOAuth2Client,
     version: "v2",
@@ -273,7 +288,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     throw ApiError.unAuthorized("Unable to retrieve Google user information");
   }
 
-  // step:5 - find the user with the email that user exists or not
+  // step:6 - find the user with the email that user exists or not
   const user = await userModel.findOne({ email: data.email }).select("+googleId");
   if (!user) {
     const newUser = await userModel.create({
@@ -285,17 +300,17 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     return await signInUser(res, newUser);
   }
 
-  // step:6 - now if user exists with email then check its googleId; if googleId is same then usko v login krne do
+  // step:7 - now if user exists with email then check its googleId; if googleId is same then usko v login krne do
   if (user.googleId === data.id) {
     return await signInUser(res, user);
   }
 
-  // step:7 - if the email found and doesn't have googleId then send request for linking
+  // step:8 - if the email found and doesn't have googleId then send request for linking
   if(!user.googleId){
     return await sendTokenForLinking(res, user._id.toString(), data.id, "google", user.email);
   }
 
-  // step:8 - now if the googleId doesn't match then reject the login
+  // step:9 - now if the googleId doesn't match then reject the login
   throw ApiError.conflict("This account is linked to another Google account.");
 })
 
@@ -424,31 +439,45 @@ export const linkOauthAccount = asyncHandler(async (req: Request, res: Response)
 
 
 export const githubLogin = asyncHandler(async (req: Request, res: Response) => {
-  // step:1 - here we take the authorization endpoint of the github
+  // step:1 - generate the state and store in the redis for csrf protection
+  const state = genereateRandomToken();
+  await redis.set(`oauth-login-state:${state}`, "1", "EX", 300); // 5 min
+
+  // step:2 - here we take the authorization endpoint of the github
   const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
 
-  // step:2 - add params like clinet_id, redirect_uri, scope
+  // step:3 - add params like clinet_id, redirect_uri, scope
   githubAuthUrl.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID!);
   githubAuthUrl.searchParams.set("redirect_uri", process.env.GITHUB_CALLBACK_URL!);
   githubAuthUrl.searchParams.set("scope", "read:user user:email");
+  githubAuthUrl.searchParams.set("state", state);
   // read: user ---> user ki profile information access krni hai
   // user: email ---> kabhi kabhi email private hota h to uske access ke liye
 
-  // step:3 - redirecting the authorization_endpoint of the github
+  // step:4 - redirecting the authorization_endpoint of the github
   res.redirect(githubAuthUrl.toString());
 })
 
 
 
 export const githubCallback = asyncHandler(async (req: Request, res: Response) => {
-  // step:1 - extract the short_code from the query that is coming from github
-  const {code} = req.query;
+  // step:1 - extract the short_code and state from the query that is coming from github
+  const { code, state } = req.query;
 
-  if (!code || typeof code !== "string") {
-    throw ApiError.badRequest("Github authorization code is missing");
+  if (!code || typeof code !== "string") throw ApiError.badRequest("Github authorization code is missing");
+  if (!state || typeof state !== "string") throw ApiError.badRequest("Github authorization state is missing");
+
+  // step:2 - check the state is right or not by finding the state in redis
+  const key = `oauth-login-state:${state}`;
+  const isValidState = await redis.get(key);
+  if (!isValidState) {
+    await redis.del(key);
+    throw ApiError.badRequest("invalid or expired login session");
   }
 
-  // step:2 - send the short_code, client_secret, client_id and redirect_uri to the github to get access and refreshtoken
+  await redis.del(key); //delete the used state
+
+  // step:3 - send the short_code, client_secret, client_id and redirect_uri to the github to get access and refreshtoken
   const bodyPayload = {
     code: code,
     client_id: process.env.GITHUB_CLIENT_ID,
@@ -472,7 +501,7 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
   const tokenData = await response.json() as IGithubTokenResponse;
   // console.log(tokenData);
 
-  // step:3 - use access_token and call userinfo_endpoint to get the user details
+  // step:4 - use access_token and call userinfo_endpoint to get the user details
   const githubAccessToken = tokenData.access_token
   const userResponse = await fetch("https://api.github.com/user", {
       headers: {
@@ -481,7 +510,7 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
       },
     });
 
-  // step:4 - if the user email is private then we have to call for the email
+  // step:5 - if the user email is private then we have to call for the email
   const emailResponse = await fetch("https://api.github.com/user/emails", {
       headers: {
         Authorization: `Bearer ${githubAccessToken}`,
@@ -497,7 +526,7 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
     throw ApiError.unAuthorized("No verified primary email found");
   }
 
-  // step:5 - find the user with the email that user exists or not in our DB
+  // step:6 - find the user with the email that user exists or not in our DB
   const user = await userModel.findOne({ email: primaryEmail.email });
   if (!user) {
     const newUser = await userModel.create({
@@ -509,16 +538,16 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
     return await signInUser(res, newUser);
   }
 
-  // step:6 - now if user exists with email then check its githubId; if githubId is same then usko v login krne do
+  // step:7 - now if user exists with email then check its githubId; if githubId is same then usko v login krne do
   if (user.githubId === githubUser.id.toString()) {
     return await signInUser(res, user);
   }
 
-  // step:7 - if the email found and doesn't have githubId then send request for linking
+  // step:8 - if the email found and doesn't have githubId then send request for linking
   if(!user.githubId){
     return await sendTokenForLinking(res, user._id.toString(), githubUser.id.toString(), "github", user.email);
   }
 
-  // step:8 - now if the googleId doesn't match then reject the login
+  // step:9 - now if the googleId doesn't match then reject the login
   throw ApiError.conflict("This account is linked to another Github account.");
 })
