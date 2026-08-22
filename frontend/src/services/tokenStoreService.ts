@@ -4,6 +4,11 @@ const USER_KEY = "user";
 interface IUser {
   name: string,
   email: string,
+  role: "user" | "admin",
+  userId: string,
+  isPasswordExists: boolean,
+  isGoogleLinked: boolean,
+  isGithubLinked: boolean,
 }
 
 
@@ -12,6 +17,10 @@ const tokenStore = {
   getUser: ()=>{
     const raw = localStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
+  },
+
+  setUser: (user: IUser)=>{
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
 
   set(accessToken: string, user?: IUser){

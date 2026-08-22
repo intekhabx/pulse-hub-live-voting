@@ -16,6 +16,18 @@ export const loginDto = z.object({
 })
 
 
+export const updateUserDetailsDto = z.object({
+  name: z.string().min(2, "name is too short").max(95).trim().optional(),
+  email: z.email("invalid email address").max(322).trim().lowercase().toLowerCase().optional(),
+})
+
+
+export const updateUserPasswordDto = z.object({
+  newPassword: z.string().min(8, "password should be 8 character minimum").max(66).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/, "password should contain capital, small number and a special character"),
+  currentPassword: z.string().min(8, "password should be 8 character minimum").max(66).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/, "password should contain capital, small number and a special character").optional(),
+})
+
+
 export const exchangeOauthOtpDto = z.object({
   otp: z.string().regex(/^\d{6}$/, "otp must contains exactly 6 digit"),
 })

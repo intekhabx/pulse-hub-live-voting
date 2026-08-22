@@ -33,6 +33,18 @@ const authService = {
         tokenStore.clear()
     },
 
+    async updateUserDetails(name?: string, email?: string){
+      const {data} = await api.patch("/api/auth/update-user", {name, email});
+      const {user} = data.data;
+      localStorage.setItem("user", JSON.stringify(user));
+      return data;
+    },
+
+    async updateUserPassword(newPassword: string, currentPassword?: string){
+      const res = await api.patch("/api/auth/update-password", {newPassword, currentPassword});
+      return res;
+    },
+
     async getUserSession(){
       const res = await api.get("/api/auth/user-session");
       return res;
@@ -50,6 +62,17 @@ const authService = {
       const {accessToken, user} = data.data;
       tokenStore.set(accessToken, user);
       return data;
+    },
+
+    async getGoogleAndGithubConnectUrl(key: "google" | "github"){
+      const {data} = await api.get(`/api/auth/${key}-connect`);
+      const {url} = data.data;
+      return url;
+    },
+
+    async disconnectGoogleAndGithub(key: "google" | "github"){
+      const res = await api.delete(`/api/auth/${key}-disconnect`);
+      return res;
     },
 
 }
