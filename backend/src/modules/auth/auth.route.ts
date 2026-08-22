@@ -31,5 +31,9 @@ router.get("/google-connect/callback", controller.googleConnectCallback);
 router.get("/github-connect", isLoggedIn, controller.githubConnect);
 router.get("/github-connect/callback", controller.githubConnectCallback);
 
+router.delete("/google-disconnect", isLoggedIn, controller.googleDisconnect);
+router.delete("/github-disconnect", isLoggedIn, controller.githubDisconnect);
+
+
 
 export default router;

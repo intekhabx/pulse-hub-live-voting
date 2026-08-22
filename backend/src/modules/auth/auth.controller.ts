@@ -619,8 +619,11 @@ export const googleConnect = asyncHandler(async (req: AuthRequest, res: Response
     redirect_uri: process.env.GOOGLE_CONNECT_CALLBACK_URL,
   });
 
-  // step:3 - redirect to the authorization_endpoint
-  res.redirect(url);
+  // step:3 - Return the generated Google OAuth authorization URL to the frontend.
+  // This endpoint is authenticated, so the frontend calls it using Axios with
+  // the user's access token. The frontend then navigates the browser to this URL
+  // to start the Google OAuth flow.
+  ApiResponse.ok(res, "google authorization_url generated successfully", {url});
 });
 
 
@@ -696,8 +699,11 @@ export const githubConnect = asyncHandler(async (req: AuthRequest, res: Response
   // read: user ---> user ki profile information access krni hai
   // user: email ---> kabhi kabhi email private hota h to uske access ke liye
 
-  // step:4 - redirecting the authorization_endpoint of the github
-  res.redirect(url.toString());
+  // step:3 - Return the generated Github OAuth authorization URL to the frontend.
+  // This endpoint is authenticated, so the frontend calls it using Axios with
+  // the user's access token. The frontend then navigates the browser to this URL
+  // to start the Github OAuth flow.
+  ApiResponse.ok(res, "github authorization_url generated successfully", {url: url.toString()});
 })
 
 
@@ -780,4 +786,60 @@ export const githubConnectCallback = asyncHandler(async (req: Request, res: Resp
   await user.save();
 
   res.redirect(`${process.env.FRONTEND_BASE_URL}/dashboard?section=settings&connected=github`);
+})
+
+
+
+export const googleDisconnect = asyncHandler(async(req: AuthRequest, res: Response)=> {
+  // step:1 - find the user using the req.user.id
+  const user = await userModel.findById(req.user?.id).select("+googleId +githubId +password");
+  if(!user){
+    throw ApiError.unAuthorized("user not found");
+  }
+
+  // step:2 - user wants to disconnect google so (check user is first connected or not)
+  if(!user.googleId){
+    throw ApiError.conflict("Google account is not connected");
+  }
+
+  // step:3 - check the user has another method present or not for login
+  if(!user.password && !user.githubId){
+    throw ApiError.badRequest("You can't disconnect your Google account because no other login method is available");
+  }
+
+  // step:4 - now user have another method to login in their account so disconenct google
+  const result = await user.updateOne({ $unset: { googleId: 1 } });
+  if (result.modifiedCount === 0) {
+    throw ApiError.conflict("Failed to disconnect Google account");
+  }
+
+  ApiResponse.ok(res, "Google Account Disconnected successfully", {isGoogleLinked: false});
+})
+
+
+
+export const githubDisconnect = asyncHandler(async(req: AuthRequest, res: Response) => {
+  // step:1 - find the user using the req.user.id
+  const user = await userModel.findById(req.user?.id).select("+googleId +githubId +password");
+  if(!user){
+    throw ApiError.unAuthorized("user not found");
+  }
+
+  // step:2 - user wants to disconnect github so (check user is first connected or not)
+  if(!user.githubId){
+    throw ApiError.conflict("Github account is not connected");
+  }
+
+  // step:3 - check the user has another method present or not for login
+  if(!user.password && !user.googleId){
+    throw ApiError.badRequest("You can't disconnect your Github account because no other login method is available");
+  }
+
+  // step:4 - now user have another method to login in their account so disconenct github
+  const result = await user.updateOne({ $unset: { githubId: 1 } });
+  if (result.modifiedCount === 0) {
+    throw ApiError.conflict("Failed to disconnect Github account");
+  }
+
+  ApiResponse.ok(res, "Github Account Disconnected successfully", {isGithubLinked: false});
 })

@@ -19,6 +19,10 @@ const tokenStore = {
     return raw ? JSON.parse(raw) : null;
   },
 
+  setUser: (user: IUser)=>{
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  },
+
   set(accessToken: string, user?: IUser){
     if(accessToken) localStorage.setItem(ACCESS_KEY, accessToken);
     if(user) localStorage.setItem(USER_KEY, JSON.stringify(user))

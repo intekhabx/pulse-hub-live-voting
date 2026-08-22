@@ -64,6 +64,17 @@ const authService = {
       return data;
     },
 
+    async getGoogleAndGithubConnectUrl(key: "google" | "github"){
+      const {data} = await api.get(`/api/auth/${key}-connect`);
+      const {url} = data.data;
+      return url;
+    },
+
+    async disconnectGoogleAndGithub(key: "google" | "github"){
+      const res = await api.delete(`/api/auth/${key}-disconnect`);
+      return res;
+    },
+
 }
 
 export default authService;
