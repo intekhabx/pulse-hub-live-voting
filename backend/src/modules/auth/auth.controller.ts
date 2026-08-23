@@ -362,7 +362,13 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     throw ApiError.unAuthorized("Unable to retrieve Google user information");
   }
 
-  // step:6 - find the user with the email that user exists or not
+  // step:6a - first find the user with googleId, so that user exists or not if not found then recheck with email because google_email and user account email can be different
+  const userByGoogleId = await userModel.findOne({ googleId: data.id });
+  if (userByGoogleId) {
+    return await signInUser(res, userByGoogleId);
+  }
+
+  // step:6b - find the user with the email that user exists or not
   const user = await userModel.findOne({ email: data.email }).select("+googleId");
   if (!user) {
     const newUser = await userModel.create({
@@ -606,7 +612,13 @@ export const githubCallback = asyncHandler(async (req: Request, res: Response) =
     throw ApiError.unAuthorized("No verified primary email found");
   }
 
-  // step:6 - find the user with the email that user exists or not in our DB
+  // step:6a - first find the user with githubId, so that user exists or not if not found then recheck with email because github_email and user account email can be different
+  const userByGithubId = await userModel.findOne({ githubId: githubUser.id.toString() });
+  if (userByGithubId) {
+    return await signInUser(res, userByGithubId);
+  }
+
+  // step:6b - find the user with the email that user exists or not in our DB
   const user = await userModel.findOne({ email: primaryEmail.email });
   if (!user) {
     const newUser = await userModel.create({
