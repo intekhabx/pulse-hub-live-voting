@@ -7,29 +7,6 @@ import type {Response} from 'express';
 import responseModel from "./response.model";
 
 
-
-
-
-export const publishPollResult = asyncHandler(async(req: AuthRequest, res: Response)=>{
-  // step:1 - find poll with id, came from params
-  const poll = await pollModel.findById(req?.params.pollId);
-  if(!poll){
-    throw ApiError.notFound("poll not found");
-  }
-
-  // step:2 - check user is owner of this poll or not
-  if(poll.createdBy !== req?.user?.id){
-    throw ApiError.unAuthorized("you are not owner of this poll")
-  }
-
-  // step:3 - publish the poll
-  poll.isPublished = true;
-  await poll.save();
-
-  ApiResponse.ok(res, "poll result is published");
-})
-
-
 export const getDashboardData = asyncHandler(async(req: AuthRequest, res: Response)=>{
   // step:1 - find users all poll
   const polls = await pollModel.find({createdBy: req?.user?.id}).sort({createdAt: -1});

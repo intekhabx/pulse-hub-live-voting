@@ -109,8 +109,8 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
       resetForm();
       setActive("polls"); // redirect to the mypolls section
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Something went wrong while creating the poll");
+      console.error(error.response);
+      toast.error(error?.response?.data.message || error?.response?.data?.error[0]?.received || "Something went wrong while creating the poll");
     } finally {
       setIsCreating(false);
     }

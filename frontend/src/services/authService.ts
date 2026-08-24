@@ -45,6 +45,11 @@ const authService = {
       return res;
     },
 
+    async deleteUserAccount(){
+      await api.delete("/api/auth/delete-user-account");
+      tokenStore.clear();
+    },
+
     async getUserSession(){
       const res = await api.get("/api/auth/user-session");
       return res;

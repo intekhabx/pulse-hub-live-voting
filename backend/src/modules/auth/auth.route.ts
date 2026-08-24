@@ -12,6 +12,7 @@ router.post("/logout", isLoggedIn, controller.logout);
 router.post("/refresh-token", controller.renewToken);
 router.patch("/update-user", validate(updateUserDetailsDto), isLoggedIn, controller.updateUserDetails);
 router.patch("/update-password", validate(updateUserPasswordDto), isLoggedIn, controller.updateUserPassword);
+router.delete("/delete-user-account", isLoggedIn, controller.deleteUserAccount);
 
 router.get("/user-session", controller.getUserSession);
 

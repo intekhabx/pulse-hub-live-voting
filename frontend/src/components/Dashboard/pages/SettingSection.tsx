@@ -2,13 +2,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import tokenStore from "../../../services/tokenStoreService";
 import authService from "../../../services/authService";
 import toast from "react-hot-toast";
+import DeleteButton from "../DeleteButton";
+import { useNavigate } from "@tanstack/react-router";
 
 const inputCls =
   "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-white/[0.03] border border-white/[0.08] outline-none focus:border-violet-500/50 focus:bg-white/[0.05] transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 const labelCls = "block text-xs font-semibold text-gray-400 mb-1.5";
 const cardCls = "rounded-2xl border border-white/[0.07] bg-[#13131f] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.2)]";
 const gradientBtn =
-  "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/35 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2";
+  "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/35 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 cursor-pointer";
 const fontHead = { fontFamily: "'Syne', sans-serif" };
 const fontBody = { fontFamily: "'DM Sans', sans-serif" };
 
@@ -83,6 +85,9 @@ function PasswordRequirements({ password }: { password: string }) {
 
 export function SettingsSection() {
   const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked } = tokenStore.getUser();
+  const [showDeleteButton, setShowDeleteButton] = useState(false);
+
+  const navigate = useNavigate();
 
   const [userDetails, setUserDetails] = useState({
     name: name,
@@ -263,6 +268,22 @@ export function SettingsSection() {
     }
   };
 
+
+  // user account deletion
+  const handleDeleteUserAccount = async ()=> {
+    try {
+      await authService.deleteUserAccount();
+      toast.success("Account deleted successfully");
+      navigate({
+        to: "/"
+      })
+    }  
+    catch (error: any) {
+      console.log(error);
+      toast.error(error?.response.data.message || "Someting went wrong while deleting");
+    }
+  }
+
   return (
     <div className="w-full">
       {/* ── Header ── */}
@@ -433,7 +454,7 @@ export function SettingsSection() {
                 <button
                   onClick={() => handleConnectionClick(key)}
                   disabled={connectingProvider === key}
-                  className={`text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors flex-shrink-0 flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed ${
+                  className={`text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors flex-shrink-0 flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer ${
                     connections[key]
                       ? "text-rose-400 border border-rose-500/30 hover:bg-rose-500/10"
                       : "text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500"
@@ -535,7 +556,8 @@ export function SettingsSection() {
               </p>
             </div>
             <button
-              className="px-5 py-2 rounded-xl text-sm font-semibold text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-colors flex-shrink-0"
+              onClick={()=> setShowDeleteButton(true)}
+              className="px-5 py-2 rounded-xl text-sm font-semibold text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-colors flex-shrink-0 cursor-pointer"
               style={fontBody}
             >
               Delete Account
@@ -543,6 +565,17 @@ export function SettingsSection() {
           </div>
         </div>
       </div>
+
+      {showDeleteButton && 
+        <DeleteButton
+          isOpen={showDeleteButton}
+          label="Are you sure, you want to delete?"
+          inputText="delete my account"
+          showInput={true}
+          onCancel={() => setShowDeleteButton(false)}
+          onDelete={handleDeleteUserAccount}
+        />
+      }
     </div>
   );
 }

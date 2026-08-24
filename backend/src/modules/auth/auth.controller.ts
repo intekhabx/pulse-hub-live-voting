@@ -11,6 +11,10 @@ import { googleOAuth2Client } from '../../config/google.config';
 import { google } from 'googleapis';
 import redis from '../../config/redis.config';
 import type { IGithubEmail, IGithubTokenResponse, IGithubUser } from '../../types/github.types';
+import mongoose from 'mongoose';
+import pollModel from '../polls/polls.model';
+import responseModel from '../response/response.model';
+import { pollExpiryQueue } from '../../config/bullmq.config';
 
 
 function makeTokenHash(token: string){
@@ -264,6 +268,62 @@ export const updateUserPassword = asyncHandler(async (req: AuthRequest, res: Res
   await user.save();
 
   ApiResponse.ok(res, "password updated successfully");
+})
+
+
+
+export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - extract the userId from req?.user.id
+  const userId = req.user?.id;
+
+  // ṣtep:2 - starts the transaction to delete the user and its related data
+  const session = await mongoose.startSession();
+
+  await session.withTransaction(async () => {
+
+    // 1 - find all polls of the user
+    const polls = await pollModel.find({ createdBy: userId }, { _id: 1 }, { session });
+
+    const pollIds = polls.map(poll => poll._id);
+
+    // 2 - delete all responses of every pollIds
+    if (pollIds.length > 0) {
+      await responseModel.deleteMany({ pollId: { $in: pollIds } }, { session });
+
+      // Cleanup Redis pollAnalytics + BullMQ for every poll worker job
+      for (const pollId of pollIds) {
+        await redis.del(`poll:${pollId}`); // Delete poll analytics from Redis
+
+        // Remove poll expiry job from BullMQ
+        const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+        if (job) {
+          await job.remove();
+        }
+      }
+    }
+
+    // 3 - remove the recent_activity in redis
+    await redis.del(`recent-activity:user:${userId}`);
+
+    // 4 - delete all polls of the user
+    await pollModel.deleteMany({ createdBy: userId }, { session });
+
+    // 5 - Finally delete the user
+    await userModel.deleteOne({ _id: userId }, { session });
+  });
+
+  console.log("User and all related data deleted");
+  await session.endSession();
+
+  // step:3 - delete the refreshToken in the cookie
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
+  });
+
+  ApiResponse.ok(res, "User Account Deleted Successfully");
 })
 
 
