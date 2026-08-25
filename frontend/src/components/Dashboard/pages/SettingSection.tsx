@@ -108,11 +108,11 @@ export function SettingsSection() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<"google" | "github" | null>(null);
 
-  const sessions = [
-    { device: "MacBook Pro · Chrome", location: "Kolkata, IN", current: true },
-    { device: "iPhone 15 · Safari", location: "Kolkata, IN", current: false },
-    { device: "Windows PC · Edge", location: "Mumbai, IN", current: false },
-  ];
+  // const sessions = [
+  //   { device: "MacBook Pro · Chrome", location: "Kolkata, IN", current: true },
+  //   { device: "iPhone 15 · Safari", location: "Kolkata, IN", current: false },
+  //   { device: "Windows PC · Edge", location: "Mumbai, IN", current: false },
+  // ];
 
   const initials = name
     ?.split(" ")
@@ -506,7 +506,7 @@ export function SettingsSection() {
         </div>
 
         {/* Active Sessions — full width */}
-        <div className={`${cardCls} lg:col-span-2`}>
+        {/* <div className={`${cardCls} lg:col-span-2`}>
           <SectionHeader
             title="Active Sessions"
             desc="Devices currently signed in to your account"
@@ -544,7 +544,7 @@ export function SettingsSection() {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Danger Zone — full width */}
         <div className="lg:col-span-2 rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] p-6">

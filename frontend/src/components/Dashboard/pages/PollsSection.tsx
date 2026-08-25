@@ -5,6 +5,7 @@ import { getPollStatus } from "../../../utils/getPollStatus";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader } from "../../Loader";
 import { PollContext } from "../../../Context/PollContext";
+import QrCode from "../QrCode";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -41,6 +42,8 @@ export function PollsSection({ setActive }: PollsSectionProps) {
 
   const {polls, totalPollResponse, isLoading, handleDelete} = pollContext;
   const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState(false);
+  const [pollId, setPollId] = useState("");
   
 
   const [filter, setFilter] = useState<FilterType>("all");
@@ -196,6 +199,17 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                         title="Analytics"
                       >
                         {Icons.analytics}
+                      </button>
+
+                      <button
+                        onClick={()=> {
+                          setPollId(poll._id);
+                          setShowQr(true);
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-pink-400 hover:bg-pink-500/10 transition-colors cursor-pointer"
+                        title="QR Code"
+                      >
+                        {Icons.qr}
                       </button>
 
                       <button
@@ -355,7 +369,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-4 divide-x divide-white/[0.05] border-t border-white/[0.05]">
+                    <div className="grid grid-cols-5 divide-x divide-white/[0.05] border-t border-white/[0.05]">
                       <button
                         onClick={() => openViewAndEditPage(poll._id)}
                         className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-violet-500/[0.06] hover:text-violet-400"
@@ -374,6 +388,19 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       >
                         {Icons.analytics}
                         Analytics
+                      </button>
+
+                      <button
+                        onClick={()=> {
+                          setPollId(poll._id);
+                          setShowQr(true);
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-orange-500/[0.06] hover:text-orange-400"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                        aria-label="Qr Code"
+                      >
+                        {Icons.qr}
+                        QR
                       </button>
 
                       <button
@@ -409,6 +436,15 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                   </div>
                 ))}
               </div>
+
+              {/* show Qr Code */}
+              {showQr && (
+                <QrCode 
+                  pollId={pollId}
+                  isOpen={showQr}
+                  onCancel={()=> setShowQr(false)} 
+                />
+              )}
             </>
           )}
         </>
