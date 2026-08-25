@@ -83,12 +83,12 @@ function QrCode({ pollId, isOpen, onCancel }: QrCodeProps) {
       />
 
       {/* Modal */}
-      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-white/10 bg-[#160f28] p-6 shadow-xl cursor-pointer">
+      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-white/10 bg-[#160f28] p-6 shadow-xl">
         {/* Close */}
         <button
           type="button"
           onClick={onCancel}
-          className="absolute right-3 top-3 text-white/40 hover:text-white/80"
+          className="absolute right-3 top-3 text-white/40 hover:text-white/80 cursor-pointer"
         >
           {Icons.close}
         </button>
@@ -130,15 +130,15 @@ function QrCode({ pollId, isOpen, onCancel }: QrCodeProps) {
             onClick={onCancel}
             className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/10 cursor-pointer"
           >
-            Close
+            <span className="inline-block mb-0.5"> Close</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownload}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-fuchsia-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-fuchsia-500 cursor-pointer"
+            className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-fuchsia-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-fuchsia-500 cursor-pointer"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="block shrink-0">
               <path
                 d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"
                 stroke="currentColor"
@@ -147,7 +147,7 @@ function QrCode({ pollId, isOpen, onCancel }: QrCodeProps) {
                 strokeLinejoin="round"
               />
             </svg>
-            Download QR
+            <span className="leading-none mb-0.5">Download QR</span>
           </button>
         </div>
       </div>

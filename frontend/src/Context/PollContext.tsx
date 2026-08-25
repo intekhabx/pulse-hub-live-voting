@@ -152,10 +152,10 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
 
   // handleDelete for deleting the polls
   const handleDelete = async(pollId: string)=> {
-    const ok = confirm("do you want to delete this poll");
-    if(!ok){
-      return;
-    }
+    // const ok = confirm("do you want to delete this poll");
+    // if(!ok){
+    //   return;
+    // }
 
     setIsLoading(true);
     try {

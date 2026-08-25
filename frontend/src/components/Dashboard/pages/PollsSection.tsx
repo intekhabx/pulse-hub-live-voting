@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Loader } from "../../Loader";
 import { PollContext } from "../../../Context/PollContext";
 import QrCode from "../QrCode";
+import DeleteButton from "../DeleteButton";
 
 // ── Polls Section ──────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
   const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [pollId, setPollId] = useState("");
+  const [showDeleteButton, setShowDeleteButton] = useState(false);
   
 
   const [filter, setFilter] = useState<FilterType>("all");
@@ -229,7 +231,10 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       </button>
 
                       <button
-                        onClick={()=> handleDelete(poll._id)}
+                        onClick={()=> {
+                          setPollId(poll._id);
+                          setShowDeleteButton(true);
+                        }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="Delete"
                       >
@@ -424,7 +429,10 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                       </button>
 
                       <button
-                        onClick={()=> handleDelete(poll._id)}
+                        onClick={()=> {
+                          setPollId(poll._id);
+                          setShowDeleteButton(true);
+                        }}
                         className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-rose-500/[0.06] hover:text-rose-400"
                         style={{ fontFamily: "'DM Sans', sans-serif" }}
                         aria-label="Delete poll"
@@ -443,6 +451,19 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                   pollId={pollId}
                   isOpen={showQr}
                   onCancel={()=> setShowQr(false)} 
+                />
+              )}
+
+              {/* show Delete Button */}
+              {showDeleteButton && (
+                <DeleteButton 
+                  isOpen={showDeleteButton}
+                  label="Are you sure, you want to delete this poll?"
+                  onCancel={()=> setShowDeleteButton(false)}
+                  onDelete={async ()=> {
+                    await handleDelete(pollId);
+                    setShowDeleteButton(false);
+                  }}
                 />
               )}
             </>
