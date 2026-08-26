@@ -16,6 +16,17 @@ export const loginDto = z.object({
 })
 
 
+export const verifyOtpDto = z.object({
+  otp: z.string().regex(/^\d{6}$/, "otp must contains exactly 6 digit"),
+  email: z.email("invalid email address").max(322).trim().lowercase().toLowerCase(),
+})
+
+
+export const resendOtpDto = z.object({
+  email: z.email("invalid email address").max(322).trim().lowercase().toLowerCase(),
+})
+
+
 export const updateUserDetailsDto = z.object({
   name: z.string().min(2, "name is too short").max(95).trim().optional(),
   email: z.email("invalid email address").max(322).trim().lowercase().toLowerCase().optional(),
