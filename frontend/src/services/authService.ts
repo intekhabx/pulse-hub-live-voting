@@ -13,11 +13,36 @@ interface ILogin {
   password: string
 }
 
+interface IVerifyOtp {
+  email: string,
+  otp: string,
+}
+interface IResendOtp {
+  email: string
+}
+
+interface IUpdateUserPasswordPayload {
+  newPassword: string;
+  currentPassword?: string;
+}
+
+
+
 const authService = {
 
     async register({ name, email, password }: IRegister) {
         const res = await api.post("/api/auth/register", { name, email, password });
         return res;
+    },
+
+    async verifyOtp({email, otp}: IVerifyOtp){
+      const res = await api.post("/api/auth/verify-otp", {email, otp});
+      return res;
+    },
+
+    async resendOtp({email}: IResendOtp){
+      const res = await api.post("/api/auth/resend-otp", {email});
+      return res;
     },
 
     async login({email, password}: ILogin){
@@ -41,7 +66,15 @@ const authService = {
     },
 
     async updateUserPassword(newPassword: string, currentPassword?: string){
-      const res = await api.patch("/api/auth/update-password", {newPassword, currentPassword});
+      const payload: IUpdateUserPasswordPayload = {
+        newPassword
+      }
+
+      if(currentPassword){
+        payload.currentPassword = currentPassword;
+      }
+
+      const res = await api.patch("/api/auth/update-password", payload);
       return res;
     },
 

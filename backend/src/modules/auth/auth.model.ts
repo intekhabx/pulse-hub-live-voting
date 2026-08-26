@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 export interface IUser extends Document{
   name: string;
   email: string;
+  email_verified: boolean;
   password?: string;
   role: "user" | "admin";
   googleId?: string;
@@ -33,6 +34,10 @@ const userSchema = new mongoose.Schema<IUser>({
     lowercase: true,
     required: [true, "email is required"],
     maxlength: 322
+  },
+  email_verified: {
+    type: Boolean,
+    default: false
   },
   password: {
     type: String,

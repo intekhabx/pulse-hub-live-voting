@@ -139,10 +139,13 @@ export function Register() {
         await authService.register(form);
         // console.log(res);
         setSuccess(true);
-        // ✅ success ke baad login pe bhejo user ko
+        // ✅ success ke baad OTP verification page pe bhejo user ko
         setTimeout(() => {
-          navigate({ to: next ? `/login?next=${encodeURIComponent(next)}` : '/login' });
-        }, 2000);
+          navigate({
+            to: "/verify-otp",
+            search: { email: form.email, next },
+          });
+        }, 1800);
       } 
       catch (err: any) {
         console.log(err.message)
@@ -246,7 +249,7 @@ export function Register() {
                   Account created! 🎉
                 </p>
                 <p className={`text-sm mt-1 ${dark ? "text-emerald-500" : "text-emerald-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  Welcome to PulseHub, {form.name.split(" ")[0]}! Redirecting to Login page
+                  Welcome to PulseHub, {form.name.split(" ")[0]}! Otp is sent on your email
                 </p>
               </div>
             ) : (

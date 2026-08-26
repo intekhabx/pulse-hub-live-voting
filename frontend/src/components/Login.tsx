@@ -78,9 +78,16 @@ export default function Login() {
       } 
       catch (err: any) {
         // console.error(err.message);
-        console.log(err.response?.data.message);
+        console.log(err.response);
         setServerError(err.response?.data?.message || "Something went wrong")
         setSuccess(false);
+        // ↗️if the error is verify your email then redirect to verify-otp page
+        if(err.response?.data?.code === "EMAIL_NOT_VERIFIED"){
+          navigate({
+            to: "/verify-otp",
+            search: { email: form.email, next },
+          });
+        }
       }
       finally{
         setLoading(false);
