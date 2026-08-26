@@ -1,4 +1,11 @@
+import dns from "node:dns";
 import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
+
+// Fixes ETIMEDOUT on hosts (like Render) whose default DNS resolution
+// prefers IPv6, which Gmail's SMTP server often doesn't respond well to.
+// Node 18+ only. Must run before any SMTP connection is created.
+dns.setDefaultResultOrder("ipv4first");
 
 
 // const transporter = nodemailer.createTransport({
@@ -9,7 +16,7 @@ import nodemailer from "nodemailer";
 //   },
 // });
 
-const transporter = nodemailer.createTransport({
+const transportOptions: SMTPTransport.Options = {
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
@@ -22,7 +29,9 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
-});
+};
+
+const transporter = nodemailer.createTransport(transportOptions);
 
 
 // optional: adding listener
