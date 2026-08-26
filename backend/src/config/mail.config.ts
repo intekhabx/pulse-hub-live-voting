@@ -16,10 +16,11 @@ dns.setDefaultResultOrder("ipv4first");
 //   },
 // });
 
-const transportOptions: SMTPTransport.Options = {
+const transportOptions: SMTPTransport.Options & { family?: number } = {
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
+  family: 4, // force IPv4 — Render's network has no IPv6 route to Gmail (ENETUNREACH)
 
   auth: {
     user: process.env.SMTP_EMAIL_USER,
@@ -32,16 +33,6 @@ const transportOptions: SMTPTransport.Options = {
 };
 
 const transporter = nodemailer.createTransport(transportOptions);
-
-
-// optional: adding listener
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP connection failed:", error);
-  } else {
-    console.log("SMTP server is ready to send emails");
-  }
-});
 
 
 export default transporter;
