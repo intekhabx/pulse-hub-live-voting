@@ -198,7 +198,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     } 
     catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Something went wrong while saving the poll");
+      toast.error(error?.response?.data.message || "Something went wrong while saving the poll")
     } 
     finally {
       setIsSaving(false);
@@ -243,7 +243,8 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     } 
     catch (error: any) {
       console.error(error);
-      toast.error(error.message || "something went wrong while activating")
+      console.error(error.response);
+      toast.error(error?.response?.data.message || "something went wrong while activating")
     }
     finally{
       setIsActivating(false);

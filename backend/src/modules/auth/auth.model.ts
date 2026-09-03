@@ -7,6 +7,7 @@ export interface IUser extends Document{
   email: string;
   password?: string;
   role: "user" | "admin";
+  plan: "FREE" | "PRO" | "PREMIUM";
   googleId?: string;
   githubId?: string;
 
@@ -57,6 +58,11 @@ const userSchema = new mongoose.Schema<IUser>({
     type: String,
     enum: ["user", "admin"],
     default: "user"
+  },
+  plan: {
+    type: String,
+    enum: ["FREE", "PRO", "PREMIUM"],
+    default: "FREE",
   },
   refreshToken: {
     type: String,

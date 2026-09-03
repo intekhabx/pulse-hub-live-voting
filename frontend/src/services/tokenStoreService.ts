@@ -6,6 +6,7 @@ interface IUser {
   email: string,
   role: "user" | "admin",
   userId: string,
+  plan: "FREE" | "PRO" | "PREMIUM",
   isPasswordExists: boolean,
   isGoogleLinked: boolean,
   isGithubLinked: boolean,

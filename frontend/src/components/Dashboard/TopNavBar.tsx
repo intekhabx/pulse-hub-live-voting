@@ -242,8 +242,17 @@ export function TopNavbar({ collapsed, activeSection, onMenuClick, onSectionChan
             <div className="text-xs font-semibold text-gray-300 leading-none" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               {user?.name}
             </div>
-            <div className="text-[10px] text-gray-600 mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              Pro Plan
+            <div
+              className={`mt-1 inline-flex items-center rounded-full px-1.5 py-[2px] text-[9px] font-semibold tracking-wide ${
+                user?.plan === "FREE"
+                  ? "bg-gray-500/10 text-gray-400 ring-1 ring-inset ring-gray-500/20"
+                  : user?.plan === "PRO"
+                  ? "bg-violet-500/10 text-violet-300 ring-1 ring-inset ring-violet-500/20"
+                  : "bg-amber-400/10 text-amber-300 ring-1 ring-inset ring-amber-400/20"
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              {user?.plan && user.plan.charAt(0).toUpperCase() + user.plan.slice(1).toLowerCase()}{" "}
             </div>
           </div>
           <button

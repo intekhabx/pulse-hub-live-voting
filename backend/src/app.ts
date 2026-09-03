@@ -9,6 +9,8 @@ import cors from 'cors';
 import globalErrorHandler from './middleware/global-error.middleware';
 import pollsRoute from './modules/polls/polls.route';
 import responseRoute from './modules/response/response.route';
+import subscriptionRoute from './modules/subscription/subscription.route';
+
 
 export function createApplication() {
   const app: Application = express();
@@ -38,6 +40,7 @@ export function createApplication() {
   app.use('/api/auth', authRoute);
   app.use('/api/polls', pollsRoute);
   app.use('/api/response', responseRoute);
+  app.use('/api/subscription', subscriptionRoute);
 
 
   app.get('/health', (_, res: Response)=>{

@@ -9,6 +9,11 @@ import { io } from "../../server";
 import mongoose from "mongoose";
 import redis from "../../config/redis.config";
 import { pollExpiryQueue } from "../../config/bullmq.config";
+import userModel from "../auth/auth.model";
+import { hasFeatureOnSubscriptionPlan } from "../../utils/user-subscription-plan.utils";
+import usageModel from "../subscription/usage.model";
+import subscriptionModel from "../subscription/subscription.model";
+import { isCallOrNewExpression } from "typescript/unstable/ast";
 
 
 const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId: string, pollTitle: string, userId: string)=> {
@@ -309,6 +314,121 @@ const validateRequiredQuestionAndOption = async (poll: IPoll, answers: {question
 }
 
 
+const checkPollCreationLimit = async (userId: mongoose.Types.ObjectId, plan: "FREE" | "PRO" | "PREMIUM") => {
+  // step:1 - stating the transactions session
+  const session = await mongoose.startSession();
+
+  try {
+    let result = false;
+
+    await session.withTransaction(async () => {
+
+      // step:2 - find how many polls a user can create based on the user plan
+      const maxPolls = hasFeatureOnSubscriptionPlan(plan, "maxPolls");
+
+      // step:3 - if the user has FREE account so count the total poll created by user (we donot create usage for free account)
+      if(plan === "FREE"){
+        const pollCount = await pollModel.countDocuments({createdBy: userId, status: "active"}, {session});
+
+        if(pollCount >= Number(maxPolls)){
+          throw ApiError.forbidden("Free plan limit reaced");
+        }
+        // if the user has less than 5 poll created then user can create
+        result = true;
+        return;
+      }
+
+      // step:4 - PREMIUM user can create → unlimited (we don't need to create usage for premium account)
+      if(plan === "PREMIUM" && maxPolls === Infinity){
+        result = true;
+        return;
+      }
+
+      // step:5 - if the user has PRO account so check the subscription
+      // findOne(kya find krna h, konse field chahiye, options)
+      const subscription = await subscriptionModel.findOne({userId, status: "ACTIVE"}, null, {session});
+
+      if(!subscription) {
+        throw ApiError.forbidden("Active subscription not found");
+      }
+
+      // step:6 - find the user current and latest usage in the DB
+      const usage = await usageModel.findOne(
+        {
+          userId,
+          periodStart: subscription.currentPeriodStart,
+          periodEnd: subscription.currentPeriodEnd
+        },
+        null,
+        {session}
+      );
+
+      if(!usage){
+        await usageModel.create(
+          [{
+            userId,
+            periodStart: subscription.currentPeriodStart,
+            periodEnd: subscription.currentPeriodEnd,
+            pollsCreated: 1,
+          }],
+          {session}
+        );
+
+        result = true;
+        return;
+      }
+
+      // if pro plan has reacted his limit
+      if(usage.pollsCreated >= Number(maxPolls)){
+        throw ApiError.forbidden("You have reached your monthly poll limit.");
+      }
+
+      // increase the pollCreation count
+      usage.pollsCreated = usage.pollsCreated + 1;
+      await usage.save({session});
+
+      result = true;
+    });
+
+    return result;
+  } 
+  catch (error) {
+    throw error;
+  }
+  finally {
+    await session.endSession();
+  }
+}
+
+
+const checkQuestionLimit = (plan: "FREE" | "PRO" | "PREMIUM", questions: {questionText: string, options:[]}[]) => {
+  // step:1 - find the plan's max question
+  const maxQuestions = hasFeatureOnSubscriptionPlan(plan, "maxQuestionsPerPoll");
+
+  // step:2 - check how many at max question in a plan a user can create
+  if (maxQuestions !== Infinity && questions.length > Number(maxQuestions)) {
+    throw ApiError.forbidden(`Your ${plan} plan allows maximum ${maxQuestions} questions per poll.`);
+  }
+
+  return true;
+};
+
+
+const checkResponsesLimit = (plan: "FREE" | "PRO" | "PREMIUM", totalResponseReceivedTillNow: number)=>{
+  // step:1 - find the plan's max responses per poll
+  const maxResponses = hasFeatureOnSubscriptionPlan(plan, "maxResponsesPerPoll");
+
+  // step:2 - check how many max responses can be done in a single poll of the user subs plan
+  if(maxResponses !== Infinity && totalResponseReceivedTillNow >= Number(maxResponses)){
+    throw ApiError.forbidden(`${plan} plan allows maximum ${maxResponses} responses per poll.`);
+  }
+  
+  return true;
+}
+
+
+
+
 
 
 
@@ -317,7 +437,15 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
   // step:1 - extract poll details from body
   const {title, description,expiresAt, questions, allowAnonymous} = req.body;
 
-  // step:2 - create poll
+  // step:2 - find the user to check that account is free, pro or premium
+  const user = await userModel.findById(req.user?.id);
+  if(!user) throw ApiError.unAuthorized("only authenticated user can create and update polls");
+
+  // step:2 - check the limit of poll and its question limit before creation
+  checkQuestionLimit(user.plan, questions);
+  await checkPollCreationLimit(user._id, user.plan);
+
+  // step:3 - now user can create poll so, create poll 
   const poll = await pollModel.create({
     title,
     description,
@@ -328,17 +456,17 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     status: "active",
   })
 
-  // step:3 add poll is created in the recent activity
-  const userId = req.user?.id.toString()!;
+  // step:4 - add poll is created in the recent activity
+  const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
 
-  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  // step:5 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
   const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
   if(expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), title, userId);
   }
 
-  // step:5 - send io response to the frontend
+  // step:6 - send io response to the frontend
   io.to(`user:${req.user?.id}`).emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfully", {pollId: poll._id});
@@ -350,7 +478,14 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
   // step:1 - extract poll details from body
   const {title, description,expiresAt, questions, allowAnonymous} = req.body;
 
-  // step:2 - create poll
+  // step:2 - find the user to check that question should be created in plan limit
+  const user = await userModel.findById(req.user?.id);
+  if(!user) throw ApiError.unAuthorized("only authenticated user can create polls");
+
+  // step:3 - check the limit of question before creation
+  checkQuestionLimit(user.plan, questions);
+
+  // step:4 - now the limit is under the plan so, create poll as draft
   const poll = await pollModel.create({
     title,
     description,
@@ -361,8 +496,8 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
     status: "draft",
   })
 
-  // step:3 add poll is created in the recent activity
-  const userId = req.user?.id.toString()!;
+  // step:5 add poll is created in the recent activity
+  const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
   
 
@@ -389,10 +524,17 @@ export const updatePollAsActive = asyncHandler(async(req: AuthRequest, res: Resp
     throw ApiError.conflict("Poll is already active");
   }
 
+  // step:4 - check the user plan limit before activating
+  const user = await userModel.findById(userId);
+  if(!user) throw ApiError.unAuthorized('only authenticated user can activate the poll');
+
+  await checkPollCreationLimit(user._id, user.plan);
+
+  // step:5 - activating the poll
   poll.status = "active";
   await poll.save();
 
-  // step:4 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  // step:6 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
   const expiryDelayInMiliSecond = new Date(poll.expiresAt?.toString()!).getTime() - Date.now();
   if(expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId?.toString()!);
@@ -408,7 +550,14 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   const {title, description, expiresAt, questions, allowAnonymous} = req.body;
   const {pollId} = req?.params;
 
-  // step:2 - find the poll using the pollId and also poll is created by same user then update it
+  // step:2 - find the user to check that question should be created and updated in plan limit
+  const user = await userModel.findById(req.user?.id);
+  if(!user) throw ApiError.unAuthorized("only authenticated user can update polls");
+
+  // step:3 - check the limit of questions before updation
+  checkQuestionLimit(user.plan, questions);
+
+  // step:4 - find the poll using the pollId and also poll is created by same user then update it
   const poll = await pollModel.findOneAndUpdate({_id: pollId, createdBy: req?.user?.id}, {
     title,
     description,
@@ -421,23 +570,23 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
     throw ApiError.notFound("poll doesn't found or exists");
   }
 
-  // step:3 - (update) remove the old pollAnalytics in the redis
+  // step:5 - (update) remove the old pollAnalytics in the redis
   await redis.del(`poll:${pollId}`);
 
-  // step:4 - find and remove the old pollExpiry job in the bullmq queue
+  // step:6 - find and remove the old pollExpiry job in the bullmq queue
   const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
   if(job){
     await job.remove();
   }
 
-  // step:5 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
+  // step:7 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
   const userId = req?.user?.id.toString()!;
   const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
   if(expiresAt && expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
   }
 
-  // step:6 - add pollUpdated in recent_activity in REDIS
+  // step:8 - add pollUpdated in recent_activity in REDIS
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Edited & Updated", icon: "update"});
 
   ApiResponse.ok(res, "poll updated successfully");
@@ -551,7 +700,13 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     throw ApiError.badRequest("please answer all required question and select only given option");
   }
 
-  // step:7 - store response in DB
+  // step:7 - check how many respones can be collected in a poll owner's plan
+  const owner = await userModel.findById(poll.createdBy);
+  if(!owner) throw ApiError.badRequest("We can't find the poll owner's account");
+
+  checkResponsesLimit(owner.plan, poll.totalResponseReceived);
+
+  // step:8 - store response in DB
   if(req?.user?.id){
     await responseModel.create({
       pollId: poll._id,
@@ -567,11 +722,16 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     })
   }
 
-  // step:8 - now add newResponseReceived in recentActivity of the poll creator
+  
+  // step:9 - increase the totalResponseReceived
+  poll.totalResponseReceived = poll.totalResponseReceived + 1;
+  await poll.save();
+
+  // step:10 - now add newResponseReceived in recentActivity of the poll creator
   const pollOwner = poll.createdBy?.toString()!;
   await addRecentActivity(pollOwner, {pollId: poll._id.toString(), pollTitle: poll.title, message: "New Response Received", icon: "response"});
 
-  // step:9 - check the redis DB that polAnalyticsData is present or not and if present then update it
+  // step:11 - check the redis DB that polAnalyticsData is present or not and if present then update it
   const key = `poll:${poll._id}`;
   let analyticsData = await updateRedisPollAnalyticsData(key, answers, req?.user?.id?.toString());
 
@@ -581,7 +741,7 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
   
-  // step:10 - send io response to the poll creator with the pollAnalyticsData
+  // step:12 - send io response to the poll creator with the pollAnalyticsData
   io.to(`user:${poll.createdBy}`).emit("server:poll-updated", analyticsData);
 
   ApiResponse.ok(res, "poll submitted successfully");

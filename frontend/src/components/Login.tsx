@@ -44,8 +44,8 @@ export default function Login() {
       }
       if (!form.password) {
         newErrors.password = "Password is required";
-      } else if (form.password.length < 6) {
-        newErrors.password = "Password must be at least 6 characters";
+      } else if (form.password.length < 8) {
+        newErrors.password = "Password must be at least 8 characters";
       }
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
@@ -79,7 +79,7 @@ export default function Login() {
       catch (err: any) {
         // console.error(err.message);
         console.log(err.response?.data.message);
-        setServerError(err.response?.data?.message || "Something went wrong")
+        setServerError(err.response?.data?.message || err.response.data.error[0].message || "Something went wrong")
         setSuccess(false);
       }
       finally{

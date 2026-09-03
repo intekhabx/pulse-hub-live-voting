@@ -3,6 +3,10 @@ export interface IUser {
   name: string;
   role: string;
   userId: string;
+  plan: "FREE" | "PRO" | "PREMIUM",
+  isPasswordExists: boolean,
+  isGoogleLinked: boolean,
+  isGithubLinked: boolean,
 }
 
 
@@ -34,4 +38,20 @@ export interface IUpdatePoll {
         }[];
     }[];
   allowAnonymous?: boolean,
+}
+
+
+export interface IPlanDetails {
+  price: number;
+
+  maxPolls: number | string,
+  maxActivePolls: number | string,
+  maxQuestionsPerPoll: number | string,
+  maxResponsesPerPoll: number | string,
+
+  advancedAnalytics: boolean,
+  csvExport: boolean,
+  removeBranding: boolean,
+  customBranding: boolean,
+  prioritySupport: boolean,
 }
