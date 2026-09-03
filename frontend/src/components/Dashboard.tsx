@@ -84,6 +84,7 @@ export default function Dashboard({ pollId, editMode }: DashboardProps) {
         collapsed={collapsed}
         activeSection={displayedSection}
         onMenuClick={() => setMobileOpen(true)}
+        onSectionChange={handleSetActiveSection}
       />
 
       <main className={`pt-16 transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-56"}`}>

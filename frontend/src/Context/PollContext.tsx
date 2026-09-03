@@ -19,6 +19,7 @@ type ContextType = {
   setPolls: React.Dispatch<React.SetStateAction<IPoll[]>>,
   totalPollResponse: IPollResponse[],
   isLoading: boolean,
+  isDeleting: boolean,
   handleDelete: (pollId: string)=> void,
 
   // analyticsPageSection***
@@ -113,6 +114,7 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
   const [polls, setPolls] = useState<IPoll[]>([]);
   const [totalPollResponse, setTotalPollResponse] = useState<IPollResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   
   const getMyPolls = async () => {
@@ -157,7 +159,7 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
     //   return;
     // }
 
-    setIsLoading(true);
+    setIsDeleting(true);
     try {
       await pollService.deletePollById(pollId);
       toast.success("Poll Deleted Successfully");
@@ -176,7 +178,7 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
       toast.error(error.message || "something went wrong");
     }
     finally{
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   }
 
@@ -236,7 +238,7 @@ const PollContextProvider = ({children}: PropsWithChildren)=> {
     // overview section***
     dashboardData, dashboardLoading, recentActivity, setRecentActivity, fetchDashboardData,
     // overview section***
-    polls, setPolls, totalPollResponse, isLoading, handleDelete,
+    polls, setPolls, totalPollResponse, isLoading, isDeleting, handleDelete,
     // analytics page section***
     pollResponse, setPollResponse, error, getAnalyticsPageData,
   }

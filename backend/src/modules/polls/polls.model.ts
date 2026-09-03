@@ -36,7 +36,8 @@ const pollSchema = new mongoose.Schema({
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+    ref: "User",
+    required: true,
   },
   questions: [
     questionSchema
@@ -56,7 +57,13 @@ const pollSchema = new mongoose.Schema({
   isPublished: {
     type: Boolean,
     default: false
-  }
+  },
+  totalResponseReceived: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+
 }, {timestamps: true});
 
 

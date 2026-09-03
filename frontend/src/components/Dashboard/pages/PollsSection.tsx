@@ -41,7 +41,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
     throw new Error("polls, totalPollResponse, isLoading and handleDelete should be present inside PollContext");
   }
 
-  const {polls, totalPollResponse, isLoading, handleDelete} = pollContext;
+  const {polls, totalPollResponse, isLoading, isDeleting, handleDelete} = pollContext;
   const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [pollId, setPollId] = useState("");
@@ -460,6 +460,7 @@ export function PollsSection({ setActive }: PollsSectionProps) {
                   isOpen={showDeleteButton}
                   label="Are you sure, you want to delete this poll?"
                   onCancel={()=> setShowDeleteButton(false)}
+                  isDeleting={isDeleting}
                   onDelete={async ()=> {
                     await handleDelete(pollId);
                     setShowDeleteButton(false);

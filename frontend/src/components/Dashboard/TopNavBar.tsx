@@ -1,9 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import authService from "../../services/authService";
 import tokenStore from "../../services/tokenStoreService";
 import { Icons } from "./Icons";
 import { DataContext } from "../../Context/ContextApi";
+import { PollContext } from "../../Context/PollContext";
 
 // ── Top Navbar ─────────────────────────────────────────────────────────────
 
@@ -11,6 +12,7 @@ interface TopNavbarProps {
   collapsed: boolean;
   activeSection: string;
   onMenuClick: () => void;
+  onSectionChange: (section: string) => void;
 }
 
 const sectionLabels: Record<string, string> = {
@@ -21,13 +23,25 @@ const sectionLabels: Record<string, string> = {
   create: "Create Poll",
 };
 
-export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarProps) {
+const MAX_SEARCH_RESULTS = 6;
+
+export function TopNavbar({ collapsed, activeSection, onMenuClick, onSectionChange }: TopNavbarProps) {
 
   const context = useContext(DataContext);
   if(!context){
     throw new Error("removeAuthUser should be defined in the ContextApi");
   }
   const {removeAuthUser} = context;
+
+  const pollContext = useContext(PollContext);
+  if(!pollContext){
+    throw new Error("polls should be defined inside the PollContext");
+  }
+  const {polls} = pollContext;
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const user = tokenStore.getUser();
   const navigate = useNavigate();
@@ -45,6 +59,66 @@ export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarPr
       setIsLoggingOut(false);
     }
   };
+
+
+  // debounce the raw input — only re-filter 500ms after the user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchInput.trim().toLowerCase());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // searching
+  const searchResults = useMemo(() => {
+    if (!debouncedQuery) return [];
+    return polls
+      .filter((poll) => poll.title?.toLowerCase().includes(debouncedQuery))
+      .slice(0, MAX_SEARCH_RESULTS);
+  }, [polls, debouncedQuery]);
+
+  // true while the user is still typing and results haven't caught up yet
+  const isSearchPending = searchInput.trim() !== "" && searchInput.trim().toLowerCase() !== debouncedQuery;
+
+  // close the dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // close the dropdown on Escape
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsSearchOpen(false);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  const openPoll = (pollId: string) => {
+    setIsSearchOpen(false);
+    setSearchInput("");
+    navigate({
+      to: `/dashboard/poll-edit/${pollId}?mode=edit`,
+      params: { pollId },
+    });
+  };
+
+  const viewAllPolls = () => {
+    setIsSearchOpen(false);
+    setSearchInput("");
+    // Calling navigate() alone doesn't help when we're already on /dashboard —
+    // the URL doesn't change, so the router won't remount Dashboard and the
+    // section state (only read from localStorage on mount) never updates.
+    // Switch the section directly instead.
+    onSectionChange("polls");
+  };
+
 
   return (
     <header
@@ -85,24 +159,79 @@ export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarPr
       {/* Right: search + bell + profile */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* Search */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-gray-500 hover:border-white/10 transition-colors cursor-pointer">
-          {Icons.search}
-          <span className="text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Search polls…
-          </span>
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-gray-600 ml-2"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            ⌘K
-          </span>
+        <div ref={searchContainerRef} className="relative hidden md:block">
+          <div className="flex items-center gap-2 px-3 h-8 rounded-full bg-white/[0.04] border border-white/[0.07] text-gray-200 hover:border-white/10 focus-within:border-violet-500/40 transition-colors">
+            {Icons.search}
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Search Polls..."
+              className="text-xs h-full outline-none bg-transparent w-40 lg:w-56"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            />
+          </div>
+
+          {/* Google-style results dropdown */}
+          {isSearchOpen && searchInput.trim() !== "" && (
+            <div className="absolute right-0 top-[calc(100%+8px)] w-80 rounded-2xl border border-white/[0.08] bg-[#13131f] shadow-2xl shadow-black/50 overflow-hidden z-50">
+              {isSearchPending ? (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-xs text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    Searching…
+                  </p>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div className="py-1.5 max-h-80 overflow-y-auto">
+                  {searchResults.map((poll) => (
+                    <button
+                      key={poll._id}
+                      onClick={() => openPoll(poll._id)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/[0.05] transition-colors"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
+                        {Icons.search}
+                      </span>
+                      <span
+                        className="text-sm text-gray-200 truncate"
+                        style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        {poll.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-xs text-gray-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    No polls found for "{searchInput.trim()}"
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={viewAllPolls}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-violet-400 hover:text-violet-300 hover:bg-white/[0.03] border-t border-white/[0.06] transition-colors"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                View all polls
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Notification bell */}
-        <button className="relative w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors border border-white/[0.07] flex-shrink-0">
+        {/* <button className="relative w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors border border-white/[0.07] flex-shrink-0">
           {Icons.bell}
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-violet-500" />
-        </button>
+        </button> */}
 
         {/* Profile */}
         <div className="flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-white/[0.07] group">
@@ -113,8 +242,17 @@ export function TopNavbar({ collapsed, activeSection, onMenuClick }: TopNavbarPr
             <div className="text-xs font-semibold text-gray-300 leading-none" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               {user?.name}
             </div>
-            <div className="text-[10px] text-gray-600 mt-0.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              Pro Plan
+            <div
+              className={`mt-1 inline-flex items-center rounded-full px-1.5 py-[2px] text-[9px] font-semibold tracking-wide ${
+                user?.plan === "FREE"
+                  ? "bg-gray-500/10 text-gray-400 ring-1 ring-inset ring-gray-500/20"
+                  : user?.plan === "PRO"
+                  ? "bg-violet-500/10 text-violet-300 ring-1 ring-inset ring-violet-500/20"
+                  : "bg-amber-400/10 text-amber-300 ring-1 ring-inset ring-amber-400/20"
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              {user?.plan && user.plan.charAt(0).toUpperCase() + user.plan.slice(1).toLowerCase()}{" "}
             </div>
           </div>
           <button

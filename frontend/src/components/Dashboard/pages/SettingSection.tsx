@@ -4,6 +4,8 @@ import authService from "../../../services/authService";
 import toast from "react-hot-toast";
 import DeleteButton from "../DeleteButton";
 import { useNavigate } from "@tanstack/react-router";
+import PlanDetails from "../PlanDetails";
+
 
 const inputCls =
   "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-white/[0.03] border border-white/[0.08] outline-none focus:border-violet-500/50 focus:bg-white/[0.05] transition-all disabled:opacity-50 disabled:cursor-not-allowed";
@@ -84,8 +86,9 @@ function PasswordRequirements({ password }: { password: string }) {
 }
 
 export function SettingsSection() {
-  const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked } = tokenStore.getUser();
+  const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked, plan } = tokenStore.getUser();
   const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -271,6 +274,7 @@ export function SettingsSection() {
 
   // user account deletion
   const handleDeleteUserAccount = async ()=> {
+    setIsDeleting(true);
     try {
       await authService.deleteUserAccount();
       toast.success("Account deleted successfully");
@@ -281,6 +285,9 @@ export function SettingsSection() {
     catch (error: any) {
       console.log(error);
       toast.error(error?.response.data.message || "Someting went wrong while deleting");
+    }
+    finally{
+      setIsDeleting(false);
     }
   }
 
@@ -476,33 +483,79 @@ export function SettingsSection() {
           </div>
         </div>
 
-        {/* Plan / Billing */}
+        {/* Data & Export section */}
         <div className={cardCls}>
           <SectionHeader
-            title="Current Plan"
-            desc="You're on the Free plan"
+            title="Data & Export"
+            desc="Download and manage your poll data"
             icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
-                <path d="M3 10h18" stroke="currentColor" strokeWidth="2" />
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
             }
-            action={
-              <button className={gradientBtn} style={fontBody}>Upgrade</button>
-            }
           />
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Active Polls", val: "3 / 5" },
-              { label: "Responses", val: "1.2K" },
-              { label: "Team Seats", val: "1 / 1" },
-            ].map(({ label, val }) => (
-              <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 text-center">
-                <p className="text-sm font-bold text-white" style={fontHead}>{val}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5" style={fontBody}>{label}</p>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-white/[0.02] border border-white/[0.06] px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0" />
+
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-200" style={fontBody}>
+                    CSV Export
+                  </p>
+
+                  <p className="text-xs text-gray-500" style={fontBody}>
+                    Download your poll results as CSV
+                  </p>
+                </div>
               </div>
-            ))}
+
+              {plan === "PRO" || plan === "PREMIUM" ? (
+                <button
+                  // onClick={handleExportCSV}
+                  className="text-xs font-semibold px-3.5 py-1.5 rounded-lg text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 transition-colors flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  style={fontBody}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Export CSV
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    // apne upgrade modal/route ka function yahan lagao
+                    // handleUpgrade();
+                  }}
+                  className="text-xs font-semibold px-3.5 py-1.5 rounded-lg text-violet-300 border border-violet-500/30 hover:bg-violet-500/10 transition-colors flex-shrink-0 cursor-pointer"
+                  style={fontBody}
+                >
+                  Upgrade
+                </button>
+              )}
+            </div>
+
+            {/* Free plan ke liye helpful info */}
+            {plan !== "PRO" && plan !== "PREMIUM" && (
+              <div
+                className="flex items-center gap-2 px-1 pt-1 text-[11px] text-gray-500"
+                style={fontBody}
+              >
+                <span>🔒</span>
+                <span>CSV Export is available on Pro and Premium plans.</span>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Plan / Billing */}
+        <div className="lg:col-span-2 borde">
+            <PlanDetails plan={plan} />
         </div>
 
         {/* Active Sessions — full width */}
@@ -572,6 +625,7 @@ export function SettingsSection() {
           label="Are you sure, you want to delete?"
           inputText="delete my account"
           showInput={true}
+          isDeleting={isDeleting}
           onCancel={() => setShowDeleteButton(false)}
           onDelete={handleDeleteUserAccount}
         />
