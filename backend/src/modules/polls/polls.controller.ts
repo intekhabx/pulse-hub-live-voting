@@ -1,7 +1,7 @@
 import asyncHandler from "../../utils/async-handler.middleware";
 import type { Request, Response } from "express";
 import pollModel from "./polls.model";
-import type { AuthRequest, IPoll, IRecentActivityData } from "../../types/index.types";
+import type { AuthRequest, IAnalytics, IPoll, IRecentActivityData } from "../../types/index.types";
 import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
@@ -13,7 +13,7 @@ import userModel from "../auth/auth.model";
 import { hasFeatureOnSubscriptionPlan } from "../../utils/user-subscription-plan.utils";
 import usageModel from "../subscription/usage.model";
 import subscriptionModel from "../subscription/subscription.model";
-import { isCallOrNewExpression } from "typescript/unstable/ast";
+
 
 
 const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId: string, pollTitle: string, userId: string)=> {
@@ -38,7 +38,7 @@ const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId
 }
 
 
-const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
+export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   // step:1 - find total poll response
   const totalResponses = await responseModel.find({pollId});
 
@@ -48,7 +48,7 @@ const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   const anonymousUserCount = totalResponseCount - authenticatedUserCount;
 
   // step:3 - finding percentage of both authecticated and anonymous User
-  const authecticatedPercentage = (authenticatedUserCount / totalResponseCount) * 100;
+  const authenticatedPercentage = (authenticatedUserCount / totalResponseCount) * 100;
   const anonymousPercentage = (anonymousUserCount / totalResponseCount) * 100;
 
   // step:4 - finding each answers optionVotes count and their percentage
@@ -193,7 +193,7 @@ const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   ]);
 
 
-  return {pollId, totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
+  return {pollId, totalResponseCount, authenticatedUserCount, anonymousUserCount, authenticatedPercentage, anonymousPercentage, analytics};
 }
 
 
@@ -761,9 +761,17 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
   }
 
   // step:2 - getPollDetailedAnalytics
-  const {pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
+  const {pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
 
-  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
+  // step:3 - check the user's plan and give basic and detailed analytics based on plan
+  if(req.user?.plan === "FREE"){
+    // if the user has free plan then give basic analytics
+    // TODO: send only basic analytics
+    ApiResponse.ok(res, "poll analytics fetched",  {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
+    return;
+  }
+
+  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
 })
 
 
@@ -900,7 +908,18 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
   }
   
   // step:5 extaract only showable data from analyticsData
-  const votesPercentages = analyticsData.analytics; //arrayofobject of question and option
+  const analytics: IAnalytics[] = analyticsData.analytics; //arrayofobject of question and option
+
+  const votesPercentages = analytics.map((item) => ({
+    questionId: item._id,
+    question: item.question,
+    options: item.options.map((option) => ({
+      optionId: option.optionId,
+      optionText: option.optionText,
+      percentage: option.percentage,
+    })),
+  }));
+  
 
   ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);
 })

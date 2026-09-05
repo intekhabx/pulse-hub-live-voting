@@ -6,6 +6,7 @@ import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
 import toast from "react-hot-toast";
 import { PollContext } from "../../../Context/PollContext";
+import { downloadPollCSV } from "../../../utils/download-poll-csv";
 
 interface PollDetailsSectionProps {
   pollId: string;
@@ -14,6 +15,7 @@ interface PollDetailsSectionProps {
 export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   const [poll, setPoll] = useState<IPollAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // fetching the data from the io
   const context = useContext(DataContext);
@@ -125,21 +127,20 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           )}
         </div>
         <button
-          onClick={handlePublish}
-          disabled={poll.isPublished}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
-            poll.isPublished
-              ? "cursor-not-allowed border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-              : "cursor-pointer border border-violet-400/20 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25 ring-1 ring-violet-400/10 hover:-translate-y-0.5 hover:shadow-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 active:scale-95"
-          }`}
+          onClick={()=> {
+            setIsExporting(true);
+            downloadPollCSV(poll);
+            setIsExporting(false);
+          }}
+          disabled={isExporting}
+          className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-violet-300/25 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-500/40 active:scale-95"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
-          {poll.isPublished ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          )}
-          {!poll.isPublished ? "Publish Result" : "Published"}
+          <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+          <span className="relative inline-flex items-center gap-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {isExporting ? "Exporting..." : "Export Analytics as CSV"}
+          </span>
         </button>
       </div>
 
@@ -190,7 +191,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           <div
             className="relative flex h-32 w-32 sm:h-36 sm:w-36 shrink-0 items-center justify-center rounded-full order-first sm:order-last"
             style={{
-              background: `conic-gradient(#f97316 ${poll.authecticatedPercentage}%, #8b5cf6 ${poll.authecticatedPercentage}% 100%)`,
+              background: `conic-gradient(#f97316 ${poll.authenticatedPercentage}%, #8b5cf6 ${poll.authenticatedPercentage}% 100%)`,
             }}
           >
             <div className="flex h-24 w-24 sm:h-28 sm:w-28 flex-col items-center justify-center rounded-full bg-[#13131f]">
@@ -217,7 +218,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
                 </div>
               </div>
               <span className="text-lg font-bold text-orange-400 flex-shrink-0 tabular-nums" style={{ fontFamily: "'Syne', sans-serif" }}>
-                {Number(poll.authecticatedPercentage).toFixed(1)}%
+                {Number(poll.authenticatedPercentage).toFixed(1)}%
               </span>
             </div>
 
@@ -286,6 +287,29 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           </section>
         ))}
       </div>
+      <button
+          onClick={handlePublish}
+          disabled={poll.isPublished}
+          className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-4 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
+            poll.isPublished
+              ? "cursor-not-allowed border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+              : "cursor-pointer border border-violet-400/20 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25 ring-1 ring-violet-400/10 hover:-translate-y-0.5 hover:shadow-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 active:scale-95"
+          }`}
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
+        >
+          {poll.isPublished ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )}
+          {!poll.isPublished ? "Publish or Reveal Results" : "Published"}
+        </button>
+        <p
+          className="mt-2 text-center text-[11px] text-slate-400/70"
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
+        >
+          "Reveal or Publish the poll results and responses to participants."
+        </p>
     </div>
   );
 }
