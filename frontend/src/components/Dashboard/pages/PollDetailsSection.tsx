@@ -6,6 +6,9 @@ import { Loader } from "../../Loader";
 import { DataContext } from "../../../Context/ContextApi";
 import toast from "react-hot-toast";
 import { PollContext } from "../../../Context/PollContext";
+import { downloadPollCSV } from "../../../utils/download-poll-csv";
+import HourlyResponseTrends from "../HourlyResponseTrends";
+import DailyResponseTrends from "../DailyResponseTrends";
 
 interface PollDetailsSectionProps {
   pollId: string;
@@ -14,6 +17,7 @@ interface PollDetailsSectionProps {
 export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
   const [poll, setPoll] = useState<IPollAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // fetching the data from the io
   const context = useContext(DataContext);
@@ -125,21 +129,20 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           )}
         </div>
         <button
-          onClick={handlePublish}
-          disabled={poll.isPublished}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
-            poll.isPublished
-              ? "cursor-not-allowed border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-              : "cursor-pointer border border-violet-400/20 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25 ring-1 ring-violet-400/10 hover:-translate-y-0.5 hover:shadow-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 active:scale-95"
-          }`}
+          onClick={()=> {
+            setIsExporting(true);
+            downloadPollCSV(poll);
+            setIsExporting(false);
+          }}
+          disabled={isExporting}
+          className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl border border-violet-300/25 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-500/40 active:scale-95"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
-          {poll.isPublished ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          )}
-          {!poll.isPublished ? "Publish Result" : "Published"}
+          <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+          <span className="relative inline-flex items-center gap-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {isExporting ? "Exporting..." : "Export Analytics as CSV"}
+          </span>
         </button>
       </div>
 
@@ -155,14 +158,14 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
         <div className="rounded-xl border border-white/[0.08] bg-[#13131f] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
           <p className="text-[11px] sm:text-xs text-gray-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>Authenticated</p>
           <h2 className="mt-2 text-xl sm:text-2xl font-bold text-orange-400" style={{ fontFamily: "'Syne', sans-serif" }}>
-            {poll.authenticatedUserCount}
+            {poll.authenticatedUserCount ? poll.authenticatedUserCount : <span className="text-sm">Locked🔒</span>}
           </h2>
         </div>
 
         <div className="rounded-xl border border-white/[0.08] bg-[#13131f] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
           <p className="text-[11px] sm:text-xs text-gray-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>Anonymous</p>
           <h2 className="mt-2 text-xl sm:text-2xl font-bold text-violet-400" style={{ fontFamily: "'Syne', sans-serif" }}>
-            {poll.anonymousUserCount}
+            {poll.anonymousUserCount ? poll.anonymousUserCount : <span className="text-sm">Locked🔒</span>}
           </h2>
         </div>
 
@@ -190,7 +193,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           <div
             className="relative flex h-32 w-32 sm:h-36 sm:w-36 shrink-0 items-center justify-center rounded-full order-first sm:order-last"
             style={{
-              background: `conic-gradient(#f97316 ${poll.authecticatedPercentage}%, #8b5cf6 ${poll.authecticatedPercentage}% 100%)`,
+              background: `conic-gradient(#f97316 ${poll.authenticatedPercentage}%, #8b5cf6 ${poll.authenticatedPercentage}% 100%)`,
             }}
           >
             <div className="flex h-24 w-24 sm:h-28 sm:w-28 flex-col items-center justify-center rounded-full bg-[#13131f]">
@@ -217,7 +220,7 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
                 </div>
               </div>
               <span className="text-lg font-bold text-orange-400 flex-shrink-0 tabular-nums" style={{ fontFamily: "'Syne', sans-serif" }}>
-                {Number(poll.authecticatedPercentage).toFixed(1)}%
+                {Number(poll.authenticatedPercentage).toFixed(1)}%
               </span>
             </div>
 
@@ -286,6 +289,192 @@ export function PollDetailsSection({ pollId }: PollDetailsSectionProps) {
           </section>
         ))}
       </div>
+
+      {/* PRO — Hourly Response Trends */}
+      {poll.hourlyResponses && poll.hourlyResponses.length > 0 && (
+        <HourlyResponseTrends poll={poll} />
+      )}
+
+
+      {/* PRO — Daily Response Trends */}
+      {poll.trends && poll.trends.length > 0 && (
+        <DailyResponseTrends poll={poll} />
+      )}
+
+
+      {/* PRO — Responses by Weak */}
+      {poll.dayOfWeekResponses && poll.dayOfWeekResponses.length > 0 && (
+        <section className="rounded-xl border border-white/[0.08] bg-[#13131f] p-3 sm:p-4 md:p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+        <div className="mb-5 sm:mb-6 flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+        <h3
+        className="text-sm font-semibold text-white"
+        style={{ fontFamily: "'Syne', sans-serif" }}
+        >
+        Weekly Response Pattern
+        </h3>
+
+              <p
+                className="mt-1 text-[11px] sm:text-xs text-gray-500"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Responses grouped by day of the week
+              </p>
+            </div>
+
+            <span className="shrink-0 rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-violet-400">
+              PRO & PREMIUM
+            </span>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 sm:grid sm:grid-cols-7 sm:gap-2.5">
+            {[
+              { id: 1, name: "Sun" },
+              { id: 2, name: "Mon" },
+              { id: 3, name: "Tue" },
+              { id: 4, name: "Wed" },
+              { id: 5, name: "Thu" },
+              { id: 6, name: "Fri" },
+              { id: 7, name: "Sat" },
+            ].map((day) => {
+              const data = poll.dayOfWeekResponses?.find(
+                (item) => item.dayOfWeek === day.id
+              );
+
+              const count = data?.responseCount ?? 0;
+
+              const maxResponses = Math.max(
+                ...(poll.dayOfWeekResponses?.map(
+                  (item) => item.responseCount
+                ) ?? [1]),
+                1
+              );
+
+              const isHighest =
+                count === maxResponses && count > 0;
+
+              return (
+                <div
+                  key={day.id}
+                  className={`w-[calc(25%-6px)] sm:w-auto rounded-xl border p-2.5 sm:p-3 text-center transition-colors ${
+                    isHighest
+                      ? "border-violet-500/30 bg-violet-500/10"
+                      : "border-white/[0.06] bg-white/[0.02]"
+                  }`}
+                >
+                  <p className="text-[9px] sm:text-[10px] font-medium text-gray-500">
+                    {day.name}
+                  </p>
+
+                  <p
+                    className={`mt-1.5 sm:mt-2 text-base sm:text-lg font-bold ${
+                      isHighest
+                        ? "text-violet-400"
+                        : "text-white"
+                    }`}
+                    style={{ fontFamily: "'Syne', sans-serif" }}
+                  >
+                    {count}
+                  </p>
+
+                  <p className="mt-1 text-[8px] sm:text-[9px] text-gray-600">
+                    responses
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* PRO — Question Response Rate */}
+      {poll.questionResponses && poll.questionResponses.length > 0 && (
+        <section className="rounded-xl border border-white/[0.08] bg-[#13131f] p-3 sm:p-4 md:p-5 shadow-[0_8px_24px_rgba(0,0,0,0.2)]"> <div className="mb-5 sm:mb-6 flex items-start sm:items-center justify-between gap-3"> <div className="min-w-0"> <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "'Syne', sans-serif" }} > Question Response Rate </h3>
+            <p
+              className="mt-1 text-[11px] sm:text-xs text-gray-500"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Compare participation across questions
+            </p>
+          </div>
+
+          <span className="shrink-0 rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-violet-400">
+            PRO & PREMIUM
+          </span>
+        </div>
+
+        <div className="space-y-4 sm:space-y-5">
+          {poll.analytics.map((question, index) => {
+            const responseRate =
+              poll.totalResponseCount > 0
+                ? (Number(question.totalVotes) / poll.totalResponseCount) * 100
+                : 0;
+
+            return (
+              <div key={question._id}>
+                <div className="mb-2 flex items-start justify-between gap-2 sm:gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-[10px] font-bold text-violet-400">
+                      {index + 1}
+                    </span>
+
+                    <span
+                      className="min-w-0 truncate text-[11px] sm:text-xs text-gray-300"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      title={question.question}
+                    >
+                      {question.question}
+                    </span>
+                  </div>
+
+                  <span className="shrink-0 text-[11px] sm:text-xs font-semibold text-white tabular-nums">
+                    {responseRate.toFixed(1)}%
+                  </span>
+                </div>
+
+                <div className="h-1.5 sm:h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-600 to-yellow-400 transition-all duration-700"
+                    style={{
+                      width: `${Math.min(responseRate, 100)}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="mt-1 text-[9px] sm:text-[10px] text-gray-600">
+                  {question.totalVotes} / {poll.totalResponseCount} responses
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        </section> 
+      )}
+
+      <button
+          onClick={handlePublish}
+          disabled={poll.isPublished}
+          className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-4 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
+            poll.isPublished
+              ? "cursor-not-allowed border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+              : "cursor-pointer border border-violet-400/20 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25 ring-1 ring-violet-400/10 hover:-translate-y-0.5 hover:shadow-violet-500/40 hover:from-violet-500 hover:to-fuchsia-500 active:scale-95"
+          }`}
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
+        >
+          {poll.isPublished ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19l9-7-9-7v14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )}
+          {!poll.isPublished ? "Publish or Reveal Results" : "Published"}
+        </button>
+        <p
+          className="mt-2 text-center text-[11px] text-slate-400/70"
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
+        >
+          "Reveal or Publish the poll results and responses to participants."
+        </p>
     </div>
   );
 }

@@ -19,6 +19,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: mongoose.Types.ObjectId,
     email: string,
+    plan: "FREE" | "PRO" | "PREMIUM",
     role: string,
   }
 }
@@ -53,3 +54,51 @@ export interface IPoll {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+
+export interface IProAnalytics {
+  trends: {
+    date: string;
+    responseCount: number;
+    percentage: number;
+  }[];
+
+  hourlyResponses: {
+    hour: number;
+    responseCount: number;
+  }[];
+
+  dayOfWeekResponses: {
+    dayOfWeek: number;
+    responseCount: number;
+  }[];
+
+  questionResponses: {
+    questionId: mongoose.Types.ObjectId;
+    responseCount: number;
+  }[];
+}
+
+
+
+
+export interface IAnalytics{
+  _id: mongoose.Types.ObjectId; 
+  question: string; 
+  totalVotes: number; 
+  options: { 
+    optionId: mongoose.Types.ObjectId; 
+    optionText: string; 
+    votes: number; 
+    percentage: number; 
+  }[]; 
+}
+export interface IPollAnalytics { 
+  pollId: mongoose.Types.ObjectId; 
+  totalResponseCount: number; 
+  authenticatedUserCount: number; 
+  anonymousUserCount: number; 
+  authenticatedPercentage: number; 
+  anonymousPercentage: number; 
+  analytics: IAnalytics[];
+};

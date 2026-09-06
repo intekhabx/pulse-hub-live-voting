@@ -52,11 +52,9 @@ export interface IOption {
 export interface IPublishedPollQuestionsAnalytics {
   _id: string;
   question: string;
-  totalVotes: string;
   options: { //option is an array of object under analytics
     optionId: string;
     optionText: string;
-    votes: number;
     percentage: number;
   }[]
 }
@@ -84,10 +82,41 @@ export interface IPollAnalytics {
   pollId: string;
   anonymousPercentage: number;
   anonymousUserCount: number;
-  authecticatedPercentage: number;
+  authenticatedPercentage: number;
   authenticatedUserCount: number;
   totalResponseCount: number;
+  trends?: ITrend[];
+  hourlyResponses?: IHourlyResponse[];
+  dayOfWeekResponses?: IDayOfWeekResponse[];
+  questionResponses?: IQuestionResponse[];
 }
+
+export interface ITrend {
+  date: string;
+  responseCount: number;
+  percentage: number;
+}
+
+export interface IHourlyResponse {
+  hour: number;
+  responseCount: number;
+}
+
+export interface IHourlyResponse {
+  hour: number;
+  responseCount: number;
+}
+
+export interface IDayOfWeekResponse {
+  dayOfWeek: number;
+  responseCount: number;
+}
+
+export interface IQuestionResponse {
+  questionId: string;
+  responseCount: number;
+}
+
 
 
 export interface IAnalyticsPageData {

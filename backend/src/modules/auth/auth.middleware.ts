@@ -24,7 +24,36 @@ export const isLoggedIn = asyncHandler(async (req: AuthRequest , res: Response, 
   req.user = {
     id: user._id,
     email: user.email,
+    plan: user.plan,
     role: user.role
   }
   next();
 })
+
+
+
+
+
+type PlanType = "FREE" | "PRO" | "PREMIUM";
+
+// authorization based on the plan
+export const requirePlan = (...allowedPlans: PlanType[]) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      // step:1 - check user is present or not in the req object
+      if (!req.user) {
+        throw ApiError.unAuthorized("Authentication required");
+      }
+
+      // step:2 - check user plan has authorized plan or not ("PRO, PREMIUM")
+      if (!allowedPlans.includes(req.user.plan)) {
+        throw ApiError.forbidden("Your current plan does not support this feature");
+      }
+
+      next();
+    } 
+    catch (error) {
+      next(error);
+    }
+  };
+};

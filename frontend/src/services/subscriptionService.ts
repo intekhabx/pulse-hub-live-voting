@@ -8,6 +8,18 @@ const subscriptionService = {
     return data;
   },
 
+  canFreeUserUseService: async () => {
+    const {data} = await api.get("/api/subscription/can-user-use");
+    return data;
+  },
+
+  exportAllPollCSV: async() => {
+    const res = await api.get(`/api/subscription/export-everypoll-csv`, {
+      responseType: "blob"
+    });
+    return res;
+  },
+
 }
 
 

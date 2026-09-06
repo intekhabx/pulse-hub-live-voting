@@ -1,7 +1,7 @@
 import asyncHandler from "../../utils/async-handler.middleware";
 import type { Request, Response } from "express";
 import pollModel from "./polls.model";
-import type { AuthRequest, IPoll, IRecentActivityData } from "../../types/index.types";
+import type { AuthRequest, IAnalytics, IPoll, IProAnalytics, IRecentActivityData } from "../../types/index.types";
 import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
@@ -13,7 +13,7 @@ import userModel from "../auth/auth.model";
 import { hasFeatureOnSubscriptionPlan } from "../../utils/user-subscription-plan.utils";
 import usageModel from "../subscription/usage.model";
 import subscriptionModel from "../subscription/subscription.model";
-import { isCallOrNewExpression } from "typescript/unstable/ast";
+
 
 
 const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId: string, pollTitle: string, userId: string)=> {
@@ -38,7 +38,7 @@ const addPollExpiryInBullMqQueue = async(expiryDelayInMiliSecond: number, pollId
 }
 
 
-const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
+export const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   // step:1 - find total poll response
   const totalResponses = await responseModel.find({pollId});
 
@@ -48,7 +48,7 @@ const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   const anonymousUserCount = totalResponseCount - authenticatedUserCount;
 
   // step:3 - finding percentage of both authecticated and anonymous User
-  const authecticatedPercentage = (authenticatedUserCount / totalResponseCount) * 100;
+  const authenticatedPercentage = (authenticatedUserCount / totalResponseCount) * 100;
   const anonymousPercentage = (anonymousUserCount / totalResponseCount) * 100;
 
   // step:4 - finding each answers optionVotes count and their percentage
@@ -193,7 +193,7 @@ const getPollDetailedAnalytics = async(pollId: mongoose.Types.ObjectId)=> {
   ]);
 
 
-  return {pollId, totalResponseCount, authenticatedUserCount, anonymousUserCount, authecticatedPercentage, anonymousPercentage, analytics};
+  return {pollId, totalResponseCount, authenticatedUserCount, anonymousUserCount, authenticatedPercentage, anonymousPercentage, analytics};
 }
 
 
@@ -425,6 +425,201 @@ const checkResponsesLimit = (plan: "FREE" | "PRO" | "PREMIUM", totalResponseRece
   
   return true;
 }
+
+
+const getBasicAnalytics = (analytics: IAnalytics[]) => {
+  return analytics.map((item) => ({
+    _id: item._id,
+    question: item.question,
+    options: item.options.map((opt) => ({
+      optionId: opt.optionId,
+      optionText: opt.optionText,
+      percentage: opt.percentage,
+    })),
+  }));
+}
+
+
+const getProAnalytics = async (pollId: mongoose.Types.ObjectId): Promise<IProAnalytics> => {
+  const [result] = await responseModel.aggregate<IProAnalytics & {totalResponses: { count: number }[]}>([
+    {
+      $match: {
+        pollId: new mongoose.Types.ObjectId(pollId),
+      },
+    },
+
+    {
+      $facet: {
+        // ==========================================
+        // 1. DAILY RESPONSE TRENDS
+        // ==========================================
+        trends: [
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$submittedAt",
+                  timezone: "Asia/Kolkata",
+                },
+              },
+
+              responseCount: {
+                $sum: 1,
+              },
+            },
+          },
+
+          {
+            $project: {
+              _id: 0,
+              date: "$_id",
+              responseCount: 1,
+            },
+          },
+
+          {
+            $sort: {
+              date: 1,
+            },
+          },
+        ],
+
+        // ==========================================
+        // TOTAL RESPONSES
+        // ==========================================
+        totalResponses: [
+          {
+            $count: "count",
+          },
+        ],
+
+        // ==========================================
+        // 2. RESPONSE BY HOUR
+        // ==========================================
+        hourlyResponses: [
+          {
+            $group: {
+              _id: {
+                $hour: {
+                  date: "$submittedAt",
+                  timezone: "Asia/Kolkata",
+                },
+              },
+
+              responseCount: {
+                $sum: 1,
+              },
+            },
+          },
+
+          {
+            $project: {
+              _id: 0,
+              hour: "$_id",
+              responseCount: 1,
+            },
+          },
+
+          {
+            $sort: {
+              hour: 1,
+            },
+          },
+        ],
+
+        // ==========================================
+        // 3. RESPONSE BY DAY OF WEEK
+        // ==========================================
+        dayOfWeekResponses: [
+          {
+            $group: {
+              _id: {
+                $dayOfWeek: {
+                  date: "$submittedAt",
+                  timezone: "Asia/Kolkata",
+                },
+              },
+
+              responseCount: {
+                $sum: 1,
+              },
+            },
+          },
+
+          {
+            $project: {
+              _id: 0,
+              dayOfWeek: "$_id",
+              responseCount: 1,
+            },
+          },
+
+          {
+            $sort: {
+              dayOfWeek: 1,
+            },
+          },
+        ],
+
+        // ==========================================
+        // 5. QUESTION RESPONSE COUNT
+        // ==========================================
+        questionResponses: [
+          {
+            $unwind: "$answers",
+          },
+
+          {
+            $group: {
+              _id: "$answers.questionId",
+
+              responseCount: {
+                $sum: 1,
+              },
+            },
+          },
+
+          {
+            $project: {
+              _id: 0,
+              questionId: "$_id",
+              responseCount: 1,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  // ==========================================
+  // CALCULATE DAILY RESPONSE PERCENTAGE
+  // ==========================================
+
+  const totalResponses =
+    result?.totalResponses?.[0]?.count ?? 0;
+
+  const trends = (result?.trends ?? []).map((item) => ({
+    date: item.date,
+    responseCount: item.responseCount,
+
+    percentage:
+      totalResponses > 0
+        ? Number(
+            ((item.responseCount / totalResponses) * 100).toFixed(2)
+          )
+        : 0,
+  }));
+
+  return {
+    trends,
+    hourlyResponses: result?.hourlyResponses ?? [],
+    dayOfWeekResponses: result?.dayOfWeekResponses ?? [],
+    questionResponses:
+      result?.questionResponses ?? [],
+  };
+};
+
 
 
 
@@ -740,9 +935,20 @@ export const submitVote = asyncHandler(async(req: AuthRequest, res: Response)=>{
     analyticsData = await getPollDetailedAnalytics(poll._id);
     await redis.set(key, JSON.stringify(analyticsData), "EX", 60 * 60 * 24 * 30); //30days
   }
-  
+
+  const {pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = analyticsData;
+
   // step:12 - send io response to the poll creator with the pollAnalyticsData
-  io.to(`user:${poll.createdBy}`).emit("server:poll-updated", analyticsData);
+  if(owner.plan === "FREE"){
+    // if the owner plan is free then send only basicAnalytics
+    const basicAnalytics = getBasicAnalytics(analytics);
+    io.to(`user:${poll.createdBy}`).emit("server:poll-updated", {pollId, anonymousPercentage, authenticatedPercentage, analytics: basicAnalytics, totalResponseCount});
+  }
+  else{
+    // if the user has pro or premium then send extra analytics data
+    const {trends, dayOfWeekResponses, hourlyResponses, questionResponses} = await getProAnalytics(poll._id);
+    io.to(`user:${poll.createdBy}`).emit("server:poll-updated", {pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount, trends, dayOfWeekResponses, hourlyResponses, questionResponses});
+  }
 
   ApiResponse.ok(res, "poll submitted successfully");
 })
@@ -761,9 +967,20 @@ export const getPollAnalytics = asyncHandler(async(req: AuthRequest, res: Respon
   }
 
   // step:2 - getPollDetailedAnalytics
-  const {pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
+  const {pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount} = await getPollDetailedAnalytics(poll._id);
 
-  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authecticatedPercentage, analytics, authenticatedUserCount, totalResponseCount });
+  // step:3 - check the user's plan and give basic and detailed analytics based on plan
+  if(req.user?.plan === "FREE"){
+    // if the user has free plan then give basic analytics
+    const basicAnalytics = getBasicAnalytics(analytics);
+
+    ApiResponse.ok(res, "basic poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, authenticatedPercentage, analytics: basicAnalytics, totalResponseCount });
+    return;
+  }
+
+  // step:4 - if the user is pro or premium then send extra poll analytics
+  const {trends, dayOfWeekResponses, hourlyResponses, questionResponses, } = await getProAnalytics(pollId);
+  ApiResponse.ok(res, "poll analytics fetched", {title: poll.title, description: poll.description, isPublished: poll.isPublished, status: poll.status, allowAnonymous: poll.allowAnonymous, expiresAt: poll.expiresAt, createdAt: poll.createdAt, createdBy: poll.createdBy, pollId, anonymousPercentage, anonymousUserCount, authenticatedPercentage, analytics, authenticatedUserCount, totalResponseCount, trends, dayOfWeekResponses, hourlyResponses, questionResponses });
 })
 
 
@@ -900,7 +1117,18 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
   }
   
   // step:5 extaract only showable data from analyticsData
-  const votesPercentages = analyticsData.analytics; //arrayofobject of question and option
+  const analytics: IAnalytics[] = analyticsData.analytics; //arrayofobject of question and option
+
+  const votesPercentages = analytics.map((item) => ({
+    _id: item._id,
+    question: item.question,
+    options: item.options.map((option) => ({
+      optionId: option.optionId,
+      optionText: option.optionText,
+      percentage: option.percentage,
+    })),
+  }));
+  
 
   ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);
 })

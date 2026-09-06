@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import DeleteButton from "../DeleteButton";
 import { useNavigate } from "@tanstack/react-router";
 import PlanDetails from "../PlanDetails";
+import subscriptionService from "../../../services/subscriptionService";
 
 
 const inputCls =
@@ -89,6 +90,7 @@ export function SettingsSection() {
   const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked, plan } = tokenStore.getUser();
   const [showDeleteButton, setShowDeleteButton] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -270,6 +272,33 @@ export function SettingsSection() {
       setConnectingProvider(null);
     }
   };
+
+
+  // handle export CSV
+  const handleExportCSV = async()=> {
+    setIsLoading(true);
+    try {
+      const res = await subscriptionService.exportAllPollCSV();
+  
+      const url = window.URL.createObjectURL(res.data);
+  
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "my-polls.csv";
+      link.click();
+    
+      window.URL.revokeObjectURL(url);
+      toast.success("Every Poll's data expored");
+    } 
+    catch (error: any) {
+      console.log(error);
+      console.log(error.response)
+      toast.error(error?.response?.data.message || "Something went wrong while exporting")
+    }
+    finally{
+      setIsLoading(false);
+    }
+  }
 
 
   // user account deletion
@@ -515,7 +544,8 @@ export function SettingsSection() {
 
               {plan === "PRO" || plan === "PREMIUM" ? (
                 <button
-                  // onClick={handleExportCSV}
+                  onClick={handleExportCSV}
+                  disabled={isLoading}
                   className="text-xs font-semibold px-3.5 py-1.5 rounded-lg text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 transition-colors flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
                   style={fontBody}
                 >
@@ -524,7 +554,7 @@ export function SettingsSection() {
                     <polyline points="7 10 12 15 17 10" />
                     <line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
-                  Export CSV
+                  {isLoading ? "Downloading..." : "Export CSV"}
                 </button>
               ) : (
                 <button
