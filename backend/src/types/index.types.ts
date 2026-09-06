@@ -56,6 +56,30 @@ export interface IPoll {
 }
 
 
+export interface IProAnalytics {
+  trends: {
+    date: string;
+    responseCount: number;
+    percentage: number;
+  }[];
+
+  hourlyResponses: {
+    hour: number;
+    responseCount: number;
+  }[];
+
+  dayOfWeekResponses: {
+    dayOfWeek: number;
+    responseCount: number;
+  }[];
+
+  questionResponses: {
+    questionId: mongoose.Types.ObjectId;
+    responseCount: number;
+  }[];
+}
+
+
 
 
 export interface IAnalytics{
