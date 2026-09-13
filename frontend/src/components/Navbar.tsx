@@ -26,7 +26,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navLinks = ["Features", "How it Works", "Pricing", "Docs"];
+  const navLinks = ["Features", "How it Works", "Pricing", "About us", "Contact"];
 
   return (
     <nav

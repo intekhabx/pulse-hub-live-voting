@@ -77,6 +77,7 @@ export function Pricing() {
 
   return (
     <section
+      id="pricing"
       className={`relative overflow-hidden px-4 py-20 sm:py-28 transition-colors duration-300 ${
         dark ? "bg-[#0a0a12] text-white" : "bg-[#f7f6ff] text-gray-950"
       }`}

@@ -1,12 +1,26 @@
 import { useContext } from "react";
 import { DataContext } from "../Context/ContextApi";
 
-
 const LINKS = {
-  Product: ["Features", "How it Works", "Pricing", "Changelog", "Roadmap"],
-  Resources: ["Documentation", "API Reference", "Guides", "Blog", "Status"],
-  Company: ["About", "Careers", "Press", "Privacy Policy", "Terms of Service"],
-  Community: ["Discord", "Twitter / X", "GitHub", "Newsletter", "Support"],
+  Product: [
+    { label: "Features", href: "#features" },
+    { label: "How It Works", href: "#how-it-works" },
+    { label: "Pricing", href: "#pricing" },
+  ],
+
+  Company: [
+    { label: "About Us", href: "#about-us" },
+    { label: "Contact Us", href: "#contact" },
+  ],
+
+  Legal: [
+    { label: "Privacy Policy", href: "/privacy-policy" },
+    { label: "Terms & Conditions", href: "/terms-and-conditions" },
+    {
+      label: "Refund & Cancellation",
+      href: "/refund-cancellation",
+    },
+  ],
 };
 
 const SOCIALS = [
@@ -19,6 +33,7 @@ const SOCIALS = [
       </svg>
     ),
   },
+
   {
     label: "GitHub",
     href: "#",
@@ -28,40 +43,31 @@ const SOCIALS = [
       </svg>
     ),
   },
-  {
-    label: "Discord",
-    href: "#",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" />
-      </svg>
-    ),
-  },
+
   {
     label: "LinkedIn",
     href: "#",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.792 0 22.225 0z" />
       </svg>
     ),
   },
 ];
 
 export default function Footer() {
-
   const context = useContext(DataContext);
-    if(!context){
-      throw new Error("dark must be used within ContextApiProvider");
-    }
-    const {dark} = context;
 
+  if (!context) {
+    throw new Error("Footer must be used within ContextApiProvider");
+  }
 
+  const { dark } = context;
   const year = new Date().getFullYear();
 
   return (
     <footer
-      className={`relative pt-20 pb-8 px-6 overflow-hidden border-t ${
+      className={`relative overflow-hidden border-t pt-20 pb-8 px-6 ${
         dark
           ? "bg-[#080810] border-white/[0.06]"
           : "bg-[#fafafa] border-gray-100"
@@ -71,19 +77,30 @@ export default function Footer() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
 
       {/* Ambient glow */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-violet-600/5 blur-[100px] pointer-events-none rounded-full" />
+      <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full bg-violet-600/5 blur-[100px]" />
 
-      <div className="relative max-w-7xl mx-auto">
-        {/* ── Top: Brand + Links ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-16">
-          {/* Brand column */}
-          <div className="lg:col-span-1">
-            {/* Logo */}
-            <a href="#" className="flex items-center gap-3 group mb-5 w-fit">
-              <div className="relative w-9 h-9 flex-shrink-0">
-                <div className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md group-hover:opacity-60 transition-opacity duration-300" />
-                <div className="relative w-9 h-9 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <div className="relative mx-auto max-w-7xl">
+
+        {/* ================= BRAND + LINKS ================= */}
+
+        <div className="grid grid-cols-1 gap-12 mb-16 lg:grid-cols-5">
+
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <a
+              href="/"
+              className="group mb-5 flex w-fit items-center gap-3"
+            >
+              <div className="relative h-9 w-9 shrink-0">
+                <div className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md transition-opacity duration-300 group-hover:opacity-60" />
+
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-500/30">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
                     <path
                       d="M3 12h3l3-8 4 16 3-8 3 4h2"
                       stroke="white"
@@ -94,8 +111,11 @@ export default function Footer() {
                   </svg>
                 </div>
               </div>
+
               <span
-                className={`text-xl font-black tracking-tight ${dark ? "text-white" : "text-gray-900"}`}
+                className={`text-xl font-black tracking-tight ${
+                  dark ? "text-white" : "text-gray-900"
+                }`}
                 style={{ fontFamily: "'Syne', sans-serif" }}
               >
                 Pulse<span className="text-violet-500">Hub</span>
@@ -103,11 +123,13 @@ export default function Footer() {
             </a>
 
             <p
-              className={`text-sm leading-relaxed mb-6 ${dark ? "text-gray-500" : "text-gray-400"}`}
+              className={`mb-6 max-w-sm text-sm leading-relaxed ${
+                dark ? "text-gray-500" : "text-gray-400"
+              }`}
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              Real-time polling and feedback collection, built for teams who
-              move fast.
+              Real-time polling and feedback collection, built for
+              teams who move fast.
             </p>
 
             {/* Socials */}
@@ -117,10 +139,16 @@ export default function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                  target={href.startsWith("http") ? "_blank" : undefined}
+                  rel={
+                    href.startsWith("http")
+                      ? "noopener noreferrer"
+                      : undefined
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 ${
                     dark
-                      ? "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-violet-400 border border-white/5"
-                      : "bg-gray-100 text-gray-400 hover:bg-violet-50 hover:text-violet-600 border border-gray-200"
+                      ? "border-white/5 bg-white/5 text-gray-500 hover:bg-white/10 hover:text-violet-400"
+                      : "border-gray-200 bg-gray-100 text-gray-400 hover:bg-violet-50 hover:text-violet-600"
                   }`}
                 >
                   {icon}
@@ -129,23 +157,25 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Link columns */}
-          <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-8">
+          {/* ================= LINKS ================= */}
+
+          <div className="grid grid-cols-3 gap-6 lg:col-span-3 sm:gap-10">
             {Object.entries(LINKS).map(([category, links]) => (
               <div key={category}>
                 <h4
-                  className={`text-xs font-bold uppercase tracking-widest mb-4 ${
+                  className={`mb-4 text-xs font-bold uppercase tracking-widest ${
                     dark ? "text-gray-400" : "text-gray-500"
                   }`}
                   style={{ fontFamily: "'Syne', sans-serif" }}
                 >
                   {category}
                 </h4>
+
                 <ul className="space-y-2.5">
-                  {links.map((link) => (
-                    <li key={link}>
+                  {links.map(({ label, href }) => (
+                    <li key={label}>
                       <a
-                        href="#"
+                        href={href}
                         className={`text-sm transition-colors duration-150 ${
                           dark
                             ? "text-gray-600 hover:text-gray-300"
@@ -153,7 +183,7 @@ export default function Footer() {
                         }`}
                         style={{ fontFamily: "'DM Sans', sans-serif" }}
                       >
-                        {link}
+                        {label}
                       </a>
                     </li>
                   ))}
@@ -163,9 +193,10 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* ── Newsletter strip ── */}
+        {/* ================= CTA / NEWSLETTER ================= */}
+
         <div
-          className={`rounded-2xl p-6 border mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 ${
+          className={`mb-12 flex flex-col items-start justify-between gap-5 rounded-2xl border p-6 sm:flex-row sm:items-center ${
             dark
               ? "bg-[#13131f] border-white/[0.06]"
               : "bg-white border-gray-100 shadow-sm"
@@ -173,31 +204,39 @@ export default function Footer() {
         >
           <div>
             <p
-              className={`text-sm font-bold ${dark ? "text-white" : "text-gray-900"}`}
+              className={`text-sm font-bold ${
+                dark ? "text-white" : "text-gray-900"
+              }`}
               style={{ fontFamily: "'Syne', sans-serif" }}
             >
               Stay in the loop
             </p>
+
             <p
-              className={`text-xs mt-0.5 ${dark ? "text-gray-500" : "text-gray-400"}`}
+              className={`mt-0.5 text-xs ${
+                dark ? "text-gray-500" : "text-gray-400"
+              }`}
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              Product updates, tips and behind-the-scenes — no spam, ever.
+              Product updates, tips and behind-the-scenes — no spam,
+              ever.
             </p>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <input
               type="email"
               placeholder="you@example.com"
-              className={`flex-1 sm:w-56 px-4 py-2.5 rounded-xl text-sm border outline-none transition-all duration-200 ${
+              className={`min-w-0 flex-1 rounded-xl border px-4 py-2.5 text-sm outline-none transition-all duration-200 sm:w-56 ${
                 dark
-                  ? "bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-violet-500/50 focus:bg-white/8"
-                  : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:bg-white"
+                  ? "border-white/10 bg-white/5 text-white placeholder-gray-600 focus:border-violet-500/50"
+                  : "border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:bg-white"
               }`}
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             />
+
             <button
-              className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 whitespace-nowrap"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500"
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
               Subscribe
@@ -205,46 +244,88 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* ── Bottom bar ── */}
+        {/* ================= BOTTOM BAR ================= */}
+
         <div
-          className={`pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-3 ${
+          className={`flex flex-col items-center justify-between gap-3 border-t pt-6 sm:flex-row ${
             dark ? "border-white/[0.06]" : "border-gray-100"
           }`}
         >
+          {/* Copyright */}
           <p
-            className={`text-xs ${dark ? "text-gray-600" : "text-gray-400"}`}
+            className={`text-xs ${
+              dark ? "text-gray-600" : "text-gray-400"
+            }`}
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
             © {year} PulseHub. All rights reserved.
           </p>
 
+          {/* Made with */}
           <div className="flex items-center gap-1">
-            <span className={`text-xs ${dark ? "text-gray-600" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            <span
+              className={`text-xs ${
+                dark ? "text-gray-600" : "text-gray-400"
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
               Made with
             </span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#f43f5e" className="mx-1">
+
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="#f43f5e"
+              className="mx-1"
+            >
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            <span className={`text-xs ${dark ? "text-gray-600" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+
+            <span
+              className={`text-xs ${
+                dark ? "text-gray-600" : "text-gray-400"
+              }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
               by intekhabx
             </span>
           </div>
 
+          {/* Legal shortcuts */}
           <div className="flex items-center gap-4">
-            {["Privacy", "Terms", "Cookies"].map((item) => (
-              <a
-                key={item}
-                href="#"
-                className={`text-xs transition-colors ${
-                  dark
-                    ? "text-gray-600 hover:text-gray-400"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {item}
-              </a>
-            ))}
+            <a
+              href="/privacy-policy"
+              className={`text-xs transition-colors ${
+                dark
+                  ? "text-gray-600 hover:text-gray-400"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Privacy
+            </a>
+
+            <a
+              href="/terms-and-conditions"
+              className={`text-xs transition-colors ${
+                dark
+                  ? "text-gray-600 hover:text-gray-400"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Terms
+            </a>
+
+            <a
+              href="/refund-cancellation"
+              className={`text-xs transition-colors ${
+                dark
+                  ? "text-gray-600 hover:text-gray-400"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Refund & Cancellation
+            </a>
           </div>
         </div>
       </div>
