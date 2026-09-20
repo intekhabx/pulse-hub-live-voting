@@ -33,6 +33,12 @@ const authService = {
         tokenStore.clear()
     },
 
+    async getUserDetails(){
+      const {data} = await api.get("/api/auth/user");
+      tokenStore.setUser(data.data.user);
+      return data;
+    },
+
     async updateUserDetails(name?: string, email?: string){
       const {data} = await api.patch("/api/auth/update-user", {name, email});
       const {user} = data.data;

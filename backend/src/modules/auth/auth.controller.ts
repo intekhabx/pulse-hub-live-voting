@@ -163,6 +163,33 @@ export const logout = asyncHandler(async(req: AuthRequest, res:Response)=>{
 
 
 
+export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - extract the userId from user object
+  const userId = req.user?.id;
+
+  // step:2 - find the user with userId
+  const user = await userModel.findById(userId).select("+password +googleId +githubId");
+  if(!user){
+    throw ApiError.notFound("User no longer exists");
+  }
+
+  const userObj = {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userId: user._id,
+    plan: user.plan,
+    isPasswordExists: user.password ? true : false,
+    isGoogleLinked: user.googleId ? true : false,
+    isGithubLinked: user.githubId ? true : false,
+  }
+
+  // step:3 - return user basic required details
+  ApiResponse.ok(res, "User Details fetched successfully", {user: userObj});
+})
+
+
+
 export const renewToken = asyncHandler(async (req: Request, res: Response, next: NextFunction)=>{
   // step:1 - refreshToken comes form req.cookie.refreshToken , we check it is missing or not
   const refreshToken = req.cookies?.refreshToken;

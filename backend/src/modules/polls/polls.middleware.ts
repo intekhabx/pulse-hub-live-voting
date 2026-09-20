@@ -32,7 +32,8 @@ export const checkAuthenticatedAndAnonymousUser = asyncHandler(async(req: AuthRe
     req.user = {
       id: user._id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      plan: user.plan,
     }
   }
 

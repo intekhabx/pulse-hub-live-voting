@@ -20,6 +20,16 @@ const subscriptionService = {
     return res;
   },
 
+  createSubscription: async(plan: "PRO" | "PREMIUM") => {
+    const {data} = await api.post("/api/subscription/create", {plan});
+    return data;
+  },
+
+  cancelSubscription: async() => {
+    const res = await api.delete("/api/subscription/cancel");
+    return res;
+  },
+
 }
 
 

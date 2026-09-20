@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { IPlanDetails } from "../../types";
 import subscriptionService from "../../services/subscriptionService";
+import { handleUpgrade } from "../../utils/load-razorpay";
+import PaymentSuccessModal from "./PaymentSuccessModal";
+import DeleteButton from "./DeleteButton";
+import toast from "react-hot-toast";
 
 
 
@@ -16,6 +20,29 @@ interface PlanDetailsProps {
 function PlanDetails({plan}: PlanDetailsProps) {
 
   const [planDetailsData, setPlanDetailsData] = useState<IPlanDetails>();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [purchasedPlan, setPurchasedPlan] = useState<"PRO" | "PREMIUM">("PRO");
+
+  const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSubscriptionCancellation = async () => {
+    setIsDeleting(true);
+    try {
+      await subscriptionService.cancelSubscription();
+      toast.success("Subscription will cancel at the end of your plan")
+    } 
+    catch (error: any) {
+      console.log(error);
+      toast.error(error.response.data.message || "Something went wrong while cancelling")
+    }
+    finally{
+      setIsDeleting(false);
+    }
+  }
+
 
   const getUserPlanDetails = async(plan: "FREE" | "PRO" | "PREMIUM") => {
     try {
@@ -74,6 +101,15 @@ function PlanDetails({plan}: PlanDetailsProps) {
               <button
                 type="button"
                 className={gradientBtn}
+                disabled={isLoading}
+                onClick={async () => {
+                  setIsLoading(true);
+                  await handleUpgrade(plan === "FREE" ? "PRO" : "PREMIUM", (plan)=> {
+                    setPurchasedPlan(plan);
+                    setShowPaymentSuccess(true);
+                  });
+                  setIsLoading(false);
+                }}
               >
                 {plan === "FREE"
                   ? "Upgrade to Pro"
@@ -212,6 +248,36 @@ function PlanDetails({plan}: PlanDetailsProps) {
                 ))}
             </div>
           </div>
+
+          {/* ==================== CANCEL SUBSCRIPTION ==================== */}
+          {plan !== "FREE" && (
+            <div
+              className={`mt-5 md:mt-10 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between ${
+                plan === "PRO"
+                  ? "border-violet-500/[0.12]"
+                  : "border-amber-400/[0.12]"
+              }`}
+            >
+              <div>
+                <p className="text-xs font-semibold text-gray-300">
+                  Manage your subscription
+                </p>
+
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Cancel your subscription if you no longer want to continue.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDeleteButton(true)}
+                className="inline-flex items-center justify-center rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs font-semibold text-red-400 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/[0.12] hover:text-red-300 cursor-pointer"
+              >
+                Cancel Subscription
+              </button>
+            </div>
+          )}
+
         </div>
 
         <div>
@@ -516,6 +582,31 @@ function PlanDetails({plan}: PlanDetailsProps) {
           )}
         </div>
       </div>
+
+      {/*  after payment sucess show this component*/}
+      {showPaymentSuccess && 
+        <PaymentSuccessModal 
+          open={showPaymentSuccess} 
+          plan={purchasedPlan} 
+          onClose={()=> setShowPaymentSuccess(false)}
+        />
+      }
+
+      {/* show cancel confirmation popup component */}
+      {showDeleteButton && 
+        <DeleteButton 
+          isOpen={showDeleteButton}
+          label="Are you sure you want to cancel subscription?"
+          inputText="cancel my subscription"
+          showInput={true}
+          isDeleting={isDeleting}
+          onCancel={() => setShowDeleteButton(false)}
+          onDelete={async () => {
+            await handleSubscriptionCancellation();
+            setShowDeleteButton(false);
+          }}
+        />
+      }
     </>
   )
 }
