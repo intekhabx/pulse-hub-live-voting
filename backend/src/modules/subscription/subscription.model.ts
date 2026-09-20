@@ -4,9 +4,10 @@ import mongoose from "mongoose";
 interface ISubscription {
   userId: mongoose.Types.ObjectId,
   plan: "PRO" | "PREMIUM",
-  status: "ACTIVE" | "CANCELLED" | "EXPIRED",
+  status: "CREATED" | "ACTIVE" | "HALTED" | "CANCELLED" | "EXPIRED" | "COMPLETED" | "UPGRADED",
   provider: "RAZORPAY",
-  providerSubscriptionId: String,
+  providerPlanId: string,
+  providerSubscriptionId: string,
   currentPeriodStart: Date,
   currentPeriodEnd: Date,
 }
@@ -27,13 +28,18 @@ const subscriptionSchema = new mongoose.Schema<ISubscription>({
   },
   status: {
     type: String,
-    enum: ["ACTIVE", "CANCELLED", "EXPIRED"],
-    default: "ACTIVE",
+    enum: ["CREATED", "ACTIVE", "HALTED", "CANCELLED", "EXPIRED", "COMPLETED", "UPGRADED"],
+    default: "CREATED",
   },
   provider: {
     type: String,
     enum: ["RAZORPAY"],
+    default: "RAZORPAY",
     required: true,
+  },
+  providerPlanId: {
+    type: String,
+    required: true
   },
   providerSubscriptionId: {
     type: String,
@@ -42,11 +48,9 @@ const subscriptionSchema = new mongoose.Schema<ISubscription>({
   },
   currentPeriodStart: {
     type: Date,
-    required: [true, "subscription plan start date is required"],
   },
   currentPeriodEnd: {
     type: Date,
-    required: [true, "subscription end date is required"],
   }
 
 }, {timestamps: true});

@@ -9,6 +9,7 @@ const router = express.Router();
 router.post("/register", validate(registerDto), controller.register);
 router.post("/login", validate(loginDto), controller.login);
 router.post("/logout", isLoggedIn, controller.logout);
+router.get("/user", isLoggedIn, controller.getUserDetails);
 router.post("/refresh-token", controller.renewToken);
 router.patch("/update-user", validate(updateUserDetailsDto), isLoggedIn, controller.updateUserDetails);
 router.patch("/update-password", validate(updateUserPasswordDto), isLoggedIn, controller.updateUserPassword);

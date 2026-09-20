@@ -6,6 +6,10 @@ import asyncHandler from "../../utils/async-handler.middleware";
 import ApiError from "../../utils/api-error.utils";
 import pollModel from "../polls/polls.model";
 import { getPollDetailedAnalytics } from "../polls/polls.controller";
+import instance from "../../config/razorpay.config";
+import subscriptionModel from "./subscription.model";
+import { subscriptionCancellationQueue } from "../../config/bullmq.config";
+import userModel from "../auth/auth.model";
 
 
 
@@ -123,3 +127,168 @@ export const exportAllPollCSV = asyncHandler(async(req: AuthRequest, res: Respon
     res.setHeader( "Content-Disposition", `attachment; filename="${req.user?.id}-user-polls.csv"` ); 
     res.status(200).send(finalCSV); //here we directly send blob data not json
 })
+
+
+
+type subscriptionType = "PRO" | "PREMIUM";
+const PLAN_ID: Record<subscriptionType, string> = {
+  PRO: process.env.RAZORPAY_PRO_PLAN_ID!,
+  PREMIUM: process.env.RAZORPAY_PREMIUM_PLAN_ID!,
+}
+
+export const createSubscription = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - Extract and validate plan
+  const plan = req.body.plan as "PRO" | "PREMIUM";
+  const userId = req.user?.id.toString()!;
+
+  if (plan !== "PRO" && plan !== "PREMIUM") {
+    throw ApiError.badRequest("Invalid plan type. Must be PRO or PREMIUM.");
+  }
+
+  // step:2 - delete CREATED plan that is not paid by user("ACTIVE" plan is mark as paid)
+  await subscriptionModel.deleteMany({
+    userId,
+    status: "CREATED",
+  });
+
+  // step:3 - check existing ACTIVE/CANCELLED Subscriptions
+  const activeSubscription = await subscriptionModel.findOne({
+    userId,
+    status: { $in: ["ACTIVE", "CANCELLED"] },
+  }).sort({ currentPeriodStart: -1 });
+
+  if (activeSubscription) {
+    // Rule 1: Same Plan Duplicate Check (PRO -> PRO ya PREMIUM -> PREMIUM)
+    if (activeSubscription.plan === plan) {
+      throw ApiError.conflict(`You already have an active ${plan} plan.`);
+    }
+
+    // Rule 2: Downgrade Check (PREMIUM -> PRO)
+    if (activeSubscription.plan === "PREMIUM" && plan === "PRO") {
+      throw ApiError.badRequest(
+        "Downgrading from PREMIUM to PRO is not supported during an active billing period. You can switch after your current plan expires."
+      );
+    }
+
+    // Rule 3: Upgrade Path (PRO -> PREMIUM)
+    if (activeSubscription.plan === "PRO" && plan === "PREMIUM") {
+      try {
+        // 1. Razorpay par purani PRO subscription cancel karein taaki duplicate auto-debit na ho
+        if (activeSubscription.providerSubscriptionId) {
+          await instance.subscriptions.cancel(activeSubscription.providerSubscriptionId, false); // Immediate cancel on provider side
+        }
+      } 
+      catch (error: any) {
+        console.warn("Notice: Old subscription cancellation on Razorpay ignored:", error?.message);
+      }
+
+      // 2. DB me purani subscription ko UPGRADED mark kar dein
+      activeSubscription.status = "UPGRADED";
+      await activeSubscription.save();
+      
+      // 3. 🛡️ LAYER 1: REMOVE SCHEDULED BULLMQ JOB
+      try {
+        const job = await subscriptionCancellationQueue.getJob(`cancel-sub-${activeSubscription._id}`);
+        if (job) {
+          await job.remove();
+          console.log(`[BullMQ] Cleaned up old pending cancel job: cancel-sub-${activeSubscription._id}`);
+        }
+      } 
+      catch (err: any) {
+        console.warn("[BullMQ] Job removal error:", err?.message);
+      }
+    }
+  }
+
+  // step:4 - Create New Razorpay Subscription for PREMIUM
+  const razorpaySubscription = await instance.subscriptions.create({
+    plan_id: PLAN_ID[plan],
+    quantity: 1,
+    total_count: 12, //total months
+    customer_notify: 1,
+    notes: {
+      userId,
+      plan,
+    },
+  });
+
+  // step:5 - save new Subscription in DB with CREATED status
+  const subscription = await subscriptionModel.create({
+    userId,
+    plan,
+    provider: "RAZORPAY",
+    providerPlanId: PLAN_ID[plan],
+    status: "CREATED", // Webhook activation tak CREATED rahega
+    providerSubscriptionId: razorpaySubscription.id,
+  });
+
+  const data = {
+    subscriptionId: subscription._id,
+    razorpaySubscriptionId: razorpaySubscription.id,
+    razorpayKeyId: process.env.RAZORPAY_API_KEY,
+    plan,
+  };
+
+  // step:6 - Send Response
+  ApiResponse.created(res, "Subscription plan created successfully", data);
+});
+
+
+
+export const cancelSubscription = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.id;
+
+  // step:1 - Fetch user's ACTIVE subscription from DB
+  const subs = await subscriptionModel.findOne({
+    userId,
+    status: "ACTIVE",
+  });
+
+  if (!subs) {
+    throw ApiError.notFound("No active subscription found to cancel");
+  }
+
+  // step:2 - Call Razorpay Cancel API (Immediate or End-of-cycle)
+  try {
+    await instance.subscriptions.cancel(subs.providerSubscriptionId, false);
+  } 
+  catch (error: any) {
+    const errorMsg = error?.error?.description || error?.message || "";
+    // Safety check for completed/already cancelled subs
+    if (!errorMsg.includes("completed") && !errorMsg.includes("cancelled")) {
+      throw ApiError.badRequest(errorMsg || "Failed to cancel subscription with Razorpay");
+    }
+  }
+
+  // step:3 - 💡 UPDATE DB IMMEDIATELY (Don't wait for webhook)
+  subs.status = "CANCELLED";
+  await subs.save();
+
+  // step:4 - 💡 SCHEDULE BULLMQ JOB RIGHT HERE
+  if (subs.currentPeriodEnd) {
+    const delayInMs = subs.currentPeriodEnd.getTime() - Date.now();
+
+    if (delayInMs > 0) {
+      await subscriptionCancellationQueue.add("subscription-cancellation",
+        {
+          userId: subs.userId,
+          subsId: subs._id,
+        },
+        {
+          jobId: `cancel-sub-${subs._id}`,
+          delay: delayInMs,
+          removeOnComplete: true,
+          attempts: 3,
+        }
+      );
+    } 
+    else {
+      // Immediate execution fallback (agar delay 0 ya negative ho)
+      await userModel.findByIdAndUpdate(userId, { plan: "FREE" });
+      subs.status = "EXPIRED";
+      await subs.save();
+    }
+  }
+
+  ApiResponse.ok(res, "Subscription cancelled successfully. Features remain active until the billing period ends.");
+});

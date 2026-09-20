@@ -6,6 +6,8 @@ import DeleteButton from "../DeleteButton";
 import { useNavigate } from "@tanstack/react-router";
 import PlanDetails from "../PlanDetails";
 import subscriptionService from "../../../services/subscriptionService";
+import { handleUpgrade } from "../../../utils/load-razorpay";
+import PaymentSuccessModal from "../PaymentSuccessModal";
 
 
 const inputCls =
@@ -91,6 +93,9 @@ export function SettingsSection() {
   const [showDeleteButton, setShowDeleteButton] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [purchasedPlan, setPurchasedPlan] = useState<"PRO" | "PREMIUM">("PRO");
 
   const navigate = useNavigate();
 
@@ -558,14 +563,19 @@ export function SettingsSection() {
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    // apne upgrade modal/route ka function yahan lagao
-                    // handleUpgrade();
+                  disabled={isLoading}
+                  onClick={async () => {
+                    setIsLoading(true);
+                    await handleUpgrade("PRO", (plan) => {
+                      setPurchasedPlan(plan);
+                      setShowPaymentSuccess(true);
+                    });
+                    setIsLoading(false);
                   }}
                   className="text-xs font-semibold px-3.5 py-1.5 rounded-lg text-violet-300 border border-violet-500/30 hover:bg-violet-500/10 transition-colors flex-shrink-0 cursor-pointer"
                   style={fontBody}
                 >
-                  Upgrade
+                  {isLoading ? "Please wait..." : "Upgrade"}
                 </button>
               )}
             </div>
@@ -582,6 +592,15 @@ export function SettingsSection() {
             )}
           </div>
         </div>
+
+        {/*  after payment sucess show this component  */}
+        {showPaymentSuccess && 
+          <PaymentSuccessModal 
+            open={showPaymentSuccess} 
+            plan={purchasedPlan} 
+            onClose={()=> setShowPaymentSuccess(false)}
+          />
+        }
 
         {/* Plan / Billing */}
         <div className="lg:col-span-2 borde">

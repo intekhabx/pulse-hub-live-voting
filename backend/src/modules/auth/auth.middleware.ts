@@ -4,6 +4,7 @@ import { verifyAccessToken, type AccessTokenPayload } from "../../utils/jwt-toke
 import userModel from "./auth.model";
 import type { AuthRequest } from "../../types/index.types";
 import asyncHandler from "../../utils/async-handler.middleware";
+import subscriptionModel from "../subscription/subscription.model";
 
 
 export const isLoggedIn = asyncHandler(async (req: AuthRequest , res: Response, next: NextFunction): Promise<void>=>{
@@ -45,7 +46,46 @@ export const requirePlan = (...allowedPlans: PlanType[]) => {
         throw ApiError.unAuthorized("Authentication required");
       }
 
-      // step:2 - check user plan has authorized plan or not ("PRO, PREMIUM")
+      // step:2 - Fetch the latest ACTIVE or CANCELLED subscription from DB
+      const subscription = await subscriptionModel.findOne({
+        userId: req.user.id,
+        status: {$in: ["ACTIVE", "CANCELLED"]},
+        currentPeriodStart: {$exists: true},
+      })
+      .sort({currentPeriodStart: -1});
+
+
+      // step:3 - expiry check (BullMQ Failure Safety Net)
+      if(subscription){
+        const currentDate = new Date();
+
+        if(subscription.status && currentDate > subscription.currentPeriodEnd){
+          //1. update the subscription status in DB
+          subscription.status = subscription.status === "CANCELLED" ? "EXPIRED" : "COMPLETED";
+          await subscription.save();
+  
+          //2. reset user plan in DB
+          await userModel.findByIdAndUpdate(req.user.id, {
+            plan: "FREE",
+          })
+  
+          // 3. update req.user object in memory for current request cycle
+          req.user.plan = "FREE";
+  
+          throw ApiError.forbidden("Your subscription period has ended");
+        }
+
+      }
+      else {
+        // Agar DB me koi ACTIVE/CANCELLED subscription bachi hi nahi hai,
+        // Lekin User DB document me plan abhi bhi PRO/PREMIUM hai:
+        if (req.user.plan !== "FREE") {
+          await userModel.findByIdAndUpdate(req.user.id, { plan: "FREE" });
+          req.user.plan = "FREE";
+        }
+      }
+
+      // step:4 - validate if user's (updated) plan is allowed
       if (!allowedPlans.includes(req.user.plan)) {
         throw ApiError.forbidden("Your current plan does not support this feature");
       }

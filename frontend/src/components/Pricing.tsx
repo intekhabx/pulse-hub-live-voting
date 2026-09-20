@@ -1,5 +1,8 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { DataContext } from "../Context/ContextApi";
+import { handleUpgrade } from "../utils/load-razorpay";
+import { useNavigate } from "@tanstack/react-router";
+import PaymentSuccessModal from "./Dashboard/PaymentSuccessModal";
 
 // ── Plan data ────────────────────────────────────────────────────────────
 // Adjust the import path below to wherever SUBSCRIPTION_PLAN_DETAILS actually
@@ -69,9 +72,16 @@ function buildFeatureList(plan: (typeof SUBSCRIPTION_PLAN_DETAILS)[PlanKey]) {
 export function Pricing() {
   const context = useContext(DataContext);
   if (!context) {
-    throw new Error("dark must be present in the DataContext Contexts");
+    throw new Error("dark and user must be present in the DataContext Contexts");
   }
-  const { dark } = context;
+  const { dark, user } = context;
+
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPremiumLoading, setIsPremiumLoading] = useState(false);
+
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [purchasedPlan, setPurchasedPlan] = useState<"PRO" | "PREMIUM">("PRO");
 
   const planKeys = Object.keys(SUBSCRIPTION_PLAN_DETAILS) as PlanKey[];
 
@@ -161,7 +171,36 @@ export function Pricing() {
                 </div>
 
                 <button
-                  className={`mt-7 w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
+                  disabled={isLoading}
+                  onClick={async ()=> {
+                    if(user){
+                      if(meta.label.toUpperCase() === "PRO"){
+                        setIsLoading(true);
+                        // calling handleUpgrade utility
+                        await handleUpgrade("PRO", (plan) => {
+                          setPurchasedPlan(plan);
+                          setShowPaymentSuccess(true);
+                        });
+                        setIsLoading(false);
+                      }
+                      else if(meta.label.toUpperCase() === "PREMIUM"){
+                        setIsPremiumLoading(true);
+                        // calling handleUpgrade utility
+                        await handleUpgrade("PREMIUM", (plan) => {
+                          setPurchasedPlan(plan);
+                          setShowPaymentSuccess(true);
+                        });
+                        setIsPremiumLoading(false);
+                      }
+                      else{
+                        navigate({to: "/dashboard"});
+                      }
+                    }
+                    else{
+                      navigate({to: "/login"});
+                    }
+                  }}
+                  className={`mt-7 w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
                     meta.popular
                       ? "text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:-translate-y-0.5"
                       : dark
@@ -170,7 +209,10 @@ export function Pricing() {
                   }`}
                   style={{ fontFamily: "'DM Sans', sans-serif" }}
                 >
-                  {plan.price === 0 ? "Start for free" : `Get ${meta.label}`}
+                  {plan.price === 0 ? "Start for free" 
+                    : isLoading && meta.label === "Pro" ? "Please Wait..." 
+                    : isPremiumLoading && meta.label === "Premium" ? "Please Wait..." 
+                    : `Get ${meta.label}`}
                 </button>
 
                 <ul className="mt-7 space-y-3">
@@ -220,6 +262,16 @@ export function Pricing() {
         <p className={`mt-10 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
           Prices in INR. Upgrade, downgrade, or cancel your plan anytime from Settings.
         </p>
+
+
+        {/*  after payment sucess show this component*/}
+        {showPaymentSuccess && 
+          <PaymentSuccessModal 
+            open={showPaymentSuccess} 
+            plan={purchasedPlan} 
+            onClose={()=> setShowPaymentSuccess(false)}
+          />
+        }
       </div>
     </section>
   );
