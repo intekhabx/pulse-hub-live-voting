@@ -20,65 +20,55 @@ const AboutUs = () => {
           : "bg-[#f9f8ff] text-gray-900"
       }`}
     >
-      {/* Background glow */}
-{/* Background accent */}
-<div
-  className={`pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent`}
-/>
+      {/* Background accent */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
 
-<div
-  className={`pointer-events-none absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[280px] rounded-full blur-3xl ${
-    dark ? "bg-violet-500/[0.06]" : "bg-violet-400/[0.07]"
-  }`}
-/>
+      <div
+        className={`pointer-events-none absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[280px] rounded-full blur-3xl ${
+          dark ? "bg-violet-500/[0.06]" : "bg-violet-400/[0.07]"
+        }`}
+      />
 
-<div className="mx-auto max-w-7xl px-6 lg:px-8">
-  {/* Heading */}
-  <div className="mx-auto max-w-2xl text-center">
-    
-    {/* Badge */}
-    <span
-      className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border mb-5 ${
-        dark
-          ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
-          : "bg-violet-50 border-violet-200 text-violet-700"
-      }`}
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
-      <span className="text-violet-400">
-        {Icons.pulse}
-      </span>
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        {/* Heading */}
+        <div className="mx-auto max-w-3xl text-center">
+          <span
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border mb-5 ${
+              dark
+                ? "bg-violet-500/10 border-violet-500/30 text-violet-300"
+                : "bg-violet-50 border-violet-200 text-violet-700"
+            }`}
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            <span className="text-violet-400">{Icons.pulse}</span>
+            About PulseHub
+          </span>
 
-      About PulseHub
-    </span>
+          <h2
+            className={`text-4xl sm:text-5xl font-black tracking-tight leading-tight ${
+              dark ? "text-white" : "text-gray-950"
+            }`}
+            style={{ fontFamily: "'Syne', sans-serif" }}
+          >
+            Turn opinions into
+            <br />
+            <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+            real-time decisions.
+            </span>
+          </h2>
 
-    {/* Heading */}
-    <h2
-      className={`text-4xl sm:text-5xl font-black tracking-tight leading-tight ${
-        dark ? "text-white" : "text-gray-950"
-      }`}
-      style={{ fontFamily: "'Syne', sans-serif" }}
-    >
-      Turn opinions into
-      <br />
-      <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-        real-time decisions.
-      </span>
-    </h2>
-
-    {/* Description */}
-    <p
-      className={`mt-4 text-md max-w-xl mx-auto leading-7 ${
-        dark ? "text-gray-400" : "text-gray-500"
-      }`}
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
-      PulseHub makes live voting simple, interactive, and easy to
-      understand. Create a poll, share it with your audience, and
-      watch the results come alive in real time.
-    </p>
-  </div>
-
+          <p
+            className={`mt-4 text-base mx-auto leading-7 ${
+              dark ? "text-gray-400" : "text-gray-500"
+            }`}
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            PulseHub is an online polling platform that helps you to
+            create polls, collect audience responses, and view results
+            in one place. Share a poll through a link or QR code and
+            make group feedback easier to manage.
+          </p>
+        </div>
 
         {/* Content */}
         <div className="mt-16 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -93,9 +83,7 @@ const AboutUs = () => {
             {/* Decorative pulse */}
             <div
               className={`absolute right-0 top-0 h-full w-1/2 ${
-                dark
-                  ? "text-fuchsia-400"
-                  : "text-fuchsia-500"
+                dark ? "text-fuchsia-400" : "text-fuchsia-500"
               } opacity-[0.06]`}
             >
               <svg
@@ -127,29 +115,34 @@ const AboutUs = () => {
                 className={`mt-6 text-2xl font-semibold ${
                   dark ? "text-white" : "text-gray-900"
                 }`}
+                style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                Built for better participation
+                Polling made simple
               </h3>
 
               <p
                 className={`mt-4 max-w-xl leading-7 ${
                   dark ? "text-gray-400" : "text-gray-600"
                 }`}
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                Whether you're hosting an event, running a classroom
-                activity, collecting feedback, or simply making a group
-                decision, PulseHub gives everyone a simple way to have
-                their voice heard.
+                PulseHub gives creators, educators, event organizers,
+                and communities a straightforward way to ask questions
+                and collect responses. Create a poll, share it with
+                participants, and let them submit their choices
+                through a simple voting experience.
               </p>
 
               <p
                 className={`mt-4 max-w-xl leading-7 ${
                   dark ? "text-gray-400" : "text-gray-600"
                 }`}
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                Instead of relying on complicated tools or delayed
-                results, PulseHub brings voting and live results together
-                in one focused experience.
+                Responses and poll results can be viewed through the
+                platform, helping poll creators understand the
+                preferences and feedback they receive. Available
+                features depend on the selected plan.
               </p>
 
               {/* Mission */}
@@ -162,8 +155,10 @@ const AboutUs = () => {
                   className={`mt-1 text-lg font-medium ${
                     dark ? "text-gray-200" : "text-gray-800"
                   }`}
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
                 >
-                  Make every vote visible, simple, and meaningful.
+                  Make collecting opinions and understanding responses
+                  simpler for everyone.
                 </p>
               </div>
             </div>
@@ -171,7 +166,7 @@ const AboutUs = () => {
 
           {/* Values */}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
-            {/* Voice */}
+            {/* Easy participation */}
             <div
               className={`rounded-3xl border p-7 ${
                 dark
@@ -193,21 +188,23 @@ const AboutUs = () => {
                 className={`mt-5 text-lg font-semibold ${
                   dark ? "text-white" : "text-gray-900"
                 }`}
+                style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                Everyone gets a voice
+                Easy participation
               </h3>
 
               <p
                 className={`mt-2 text-sm leading-6 ${
                   dark ? "text-gray-400" : "text-gray-600"
                 }`}
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                Designed to make participation effortless for both
-                creators and voters.
+                Share polls through unique links or QR codes and make
+                it easier for your intended audience to participate.
               </p>
             </div>
 
-            {/* Simple */}
+            {/* Clear results */}
             <div
               className={`rounded-3xl border p-7 ${
                 dark
@@ -229,17 +226,20 @@ const AboutUs = () => {
                 className={`mt-5 text-lg font-semibold ${
                   dark ? "text-white" : "text-gray-900"
                 }`}
+                style={{ fontFamily: "'Syne', sans-serif" }}
               >
-                Simple by design
+                Clear poll results
               </h3>
 
               <p
                 className={`mt-2 text-sm leading-6 ${
                   dark ? "text-gray-400" : "text-gray-600"
                 }`}
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
               >
-                Create, share, vote, and understand results without
-                unnecessary complexity.
+                View collected responses in an organized format.
+                Additional analytics and CSV export are available
+                according to your subscription plan.
               </p>
             </div>
           </div>
@@ -257,16 +257,18 @@ const AboutUs = () => {
             className={`text-sm ${
               dark ? "text-gray-400" : "text-gray-600"
             }`}
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            From a quick opinion to a live audience poll,
+            From creating a poll to reviewing audience feedback,
           </p>
 
           <p
             className={`mt-2 text-xl font-semibold ${
               dark ? "text-white" : "text-gray-900"
             }`}
+            style={{ fontFamily: "'Syne', sans-serif" }}
           >
-            PulseHub keeps the conversation moving.
+            PulseHub brings polling and responses together.
           </p>
         </div>
       </div>

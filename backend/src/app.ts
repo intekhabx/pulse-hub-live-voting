@@ -10,6 +10,7 @@ import globalErrorHandler from './middleware/global-error.middleware';
 import pollsRoute from './modules/polls/polls.route';
 import responseRoute from './modules/response/response.route';
 import subscriptionRoute from './modules/subscription/subscription.route';
+import contactRoute from './modules/contact/contact.route';
 
 
 export function createApplication() {
@@ -41,6 +42,7 @@ export function createApplication() {
   app.use('/api/polls', pollsRoute);
   app.use('/api/response', responseRoute);
   app.use('/api/subscription', subscriptionRoute);
+  app.use('/api/contact', contactRoute);
 
 
   app.get('/health', (_, res: Response)=>{

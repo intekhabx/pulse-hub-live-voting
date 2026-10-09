@@ -32,26 +32,51 @@ const STEPS = [
     bg: "bg-cyan-500/10",
     border: "border-cyan-500/20",
     title: "Share the link",
-    desc: "Copy your unique poll link and share it anywhere — Slack, email, social media, or embed it. Respondents can open it instantly with no account required (in anonymous mode).",
+    desc: "Share your poll with a unique link or QR code. Participants can open it and vote easily without creating an account when anonymous voting is enabled, they can participate without creating an account, making it easier to collect opinions, preferences, and feedback from your audience.",
     visual: (dark: boolean) => (
       <div className={`rounded-xl p-4 border ${dark ? "bg-[#0f0f1c] border-white/10" : "bg-white border-gray-200"}`}>
-        <div className={`text-[10px] mb-2 ${dark ? "text-gray-500" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>Your poll link</div>
+        <div
+          className={`text-[10px] mb-2 ${dark ? "text-gray-500" : "text-gray-400"}`}
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
+        >
+          Your poll link
+        </div>
+    
         <div className={`flex items-center gap-2 rounded-lg px-3 py-2 border ${dark ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"}`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-cyan-400 flex-shrink-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-cyan-400 flex-shrink-0">
             <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className={`text-[11px] flex-1 truncate ${dark ? "text-gray-300" : "text-gray-600"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            pulsehub.app/p/dev-survey-24
+    
+          <span
+            className={`text-[11px] flex-1 min-w-0 break-all ${dark ? "text-gray-300" : "text-gray-600"}`}
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            pulsehub-board.vercel.app/votes/dev-survey-24
           </span>
-          <button className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors flex-shrink-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Copy
-          </button>
+    
+          <span className="text-[10px] font-bold text-cyan-400 flex-shrink-0">
+            Link
+          </span>
         </div>
-        <div className="mt-3 flex gap-2">
-          {["Slack", "Email", "Twitter"].map((p) => (
-            <span key={p} className={`text-[10px] px-2 py-1 rounded-md border font-medium ${dark ? "bg-white/5 border-white/10 text-gray-400" : "bg-gray-50 border-gray-200 text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>{p}</span>
-          ))}
+    
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-violet-400 flex-shrink-0">
+              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2" />
+              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2" />
+              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2" />
+              <path d="M14 14h3v3h-3zM20 14v2M17 20h4M20 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+    
+            <span className={`text-[11px] font-medium ${dark ? "text-gray-400" : "text-gray-500"}`}>
+              QR code sharing
+            </span>
+          </div>
+    
+          <span className={`text-[10px] px-2 py-1 rounded-md border ${dark ? "bg-white/5 border-white/10 text-gray-400" : "bg-gray-50 border-gray-200 text-gray-500"}`}>
+            Scan to open
+          </span>
         </div>
       </div>
     ),
@@ -63,7 +88,7 @@ const STEPS = [
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
     title: "Collect responses",
-    desc: "Respondents open the link, answer your questions, and submit in seconds. Mandatory validation and expiry enforcement happen automatically — you just watch the data come in.",
+    desc: "Respondents open the link, answer your questions, and submit in seconds. Mandatory validation and expiry enforcement happen automatically, you just watch the data come in.",
     visual: (dark: boolean) => (
       <div className={`rounded-xl p-4 border ${dark ? "bg-[#0f0f1c] border-white/10" : "bg-white border-gray-200"}`}>
         <div className={`text-[11px] font-semibold mb-3 ${dark ? "text-white" : "text-gray-800"}`} style={{ fontFamily: "'Syne', sans-serif" }}>Preferred stack?</div>
@@ -90,7 +115,7 @@ const STEPS = [
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
     title: "Publish your results",
-    desc: "Once the poll closes, dive into the analytics dashboard. When you're satisfied, hit Publish — and your results page goes live at the same link, visible to anyone.",
+    desc: "Whenever want to publish or once poll closes, dive into the analytics dashboard. When you're satisfied, hit Publish, and your results page goes live at the same link, visible to everyone.",
     visual: (dark: boolean) => (
       <div className={`rounded-xl p-4 border ${dark ? "bg-[#0f0f1c] border-white/10" : "bg-white border-gray-200"}`}>
         <div className="flex items-center justify-between mb-3">

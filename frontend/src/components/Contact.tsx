@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import { Icons } from "./Dashboard/Icons";
 import { DataContext } from "../Context/ContextApi";
-
+import messageService from "../services/messageService";
 
 const Contact = () => {
   const context = useContext(DataContext);
@@ -19,52 +19,97 @@ const Contact = () => {
     message: "",
   });
 
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
 
-    if (status) {
-      setStatus("");
-    }
+    if (status === "error") setStatus("idle");
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+
+  const validateForm = () => {
+    const trimmedName = form.name.trim();
+    const trimmedEmail = form.email.trim();
+    const trimmedSubject = form.subject.trim();
+    const trimmedMessage = form.message.trim();
+
+    // Name Validation
+    if (!trimmedName) return "Name is required.";
+    if (trimmedName.length < 2 || trimmedName.length > 95)
+      return "Name must be between 2 and 95 characters.";
+
+    // Email Validation
+    if (!trimmedEmail) return "Email is required.";
+    if (trimmedEmail.length > 322)
+      return "Email must be less than 322 characters.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail))
+      return "Please enter a valid email address.";
+
+    // Subject Validation
+    if (!trimmedSubject) return "Subject is required.";
+    if (trimmedSubject.length < 5 || trimmedSubject.length > 150)
+      return "Subject must be between 5 and 150 characters.";
+
+    // Message Validation
+    if (!trimmedMessage) return "Message is required.";
+    if (trimmedMessage.length < 10 || trimmedMessage.length > 1000)
+      return "Message must be between 10 and 1000 characters.";
+
+    return null;
+  };
+
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!form.name || !form.email || !form.message) {
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMessage(validationError);
       setStatus("error");
       return;
     }
 
-    setStatus("success");
+    try {
+      setLoading(true);
+      const {name, email, subject, message} = form;
 
-    // Connect this with your backend/API later.
-    console.log(form);
+      await messageService.sendMessage({name, email, subject, message});
+
+      setStatus("success");
+    } 
+    catch (err: any) {
+      console.error("Form submission failed:", err.response?.data?.message);
+      setErrorMessage("Something went wrong. Please try again.");
+      setStatus("error");
+    }
+    finally{
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setForm({ name: "", email: "", subject: "", message: "" });
+    setStatus("idle");
+    setErrorMessage("");
   };
 
   return (
     <main
       id="contact"
       className={`min-h-screen transition-colors duration-300 ${
-        dark
-          ? "bg-[#09090b] text-white"
-          : "bg-[#f8fafc] text-slate-900"
+        dark ? "bg-[#09090b] text-white" : "bg-[#f8fafc] text-slate-900"
       }`}
     >
-      {/* ================= HERO ================= */}
+      {/* HERO */}
       <section className="relative overflow-hidden">
-        {/* Background glow */}
         <div
           className={`pointer-events-none absolute left-1/2 top-0 h-[420px] w-[700px] -translate-x-1/2 rounded-full blur-3xl ${
-            dark
-              ? "bg-violet-600/10"
-              : "bg-violet-500/10"
+            dark ? "bg-violet-600/10" : "bg-violet-500/10"
           }`}
         />
 
@@ -87,41 +132,43 @@ const Contact = () => {
               >
                 {Icons.mail}
               </span>
-
               <span>Contact PulseHub</span>
             </div>
 
             {/* Heading */}
-            <h1
-              className={`text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl ${
-                dark ? "text-white" : "text-slate-950"
+            <h2
+              className={`text-4xl sm:text-5xl font-black tracking-tight leading-tight ${
+                dark ? "text-white" : "text-gray-950"
               }`}
+              style={{ fontFamily: "'Syne', sans-serif" }}
             >
-              Let&apos;s talk about
-              <span className="block bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-                your next live vote.
+              Have questions?
+              <br />
+              <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                We're here to help.
               </span>
-            </h1>
+            </h2>
 
             {/* Description */}
             <p
-              className={`mx-auto mt-6 max-w-2xl text-base leading-7 sm:text-lg ${
-                dark ? "text-slate-400" : "text-slate-600"
+              className={`mt-4 text-base mx-auto leading-7 ${
+                dark ? "text-gray-400" : "text-gray-500"
               }`}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              Have a question about PulseHub, need help with your account,
-              or want to know more about our plans? We&apos;d love to hear
+              Contact PulseHub for help with polls, your account, subscription
+              plans, or any questions about our platform. We'd be happy to hear
               from you.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ================= CONTACT SECTION ================= */}
+      {/* CONTACT SECTION */}
       <section className="pb-20 sm:pb-24 lg:pb-28">
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-16">
-            {/* ================= LEFT ================= */}
+            {/* LEFT */}
             <div className="pt-2 lg:pt-8">
               <span
                 className={`text-xs font-bold tracking-[0.2em] ${
@@ -136,9 +183,9 @@ const Contact = () => {
                   dark ? "text-white" : "text-slate-950"
                 }`}
               >
-                We&apos;re here to
+                Let's make
                 <span className="block bg-gradient-to-r from-violet-500 to-indigo-500 bg-clip-text text-transparent">
-                  help.
+                  polling easier.
                 </span>
               </h2>
 
@@ -147,8 +194,8 @@ const Contact = () => {
                   dark ? "text-slate-400" : "text-slate-600"
                 }`}
               >
-                Whether you&apos;re setting up your first live vote or already
-                running events with PulseHub, our team is here to help.
+                Whether you need help to creating a poll, managing responses,
+                or understanding your subscription, we're here to assist.
               </p>
 
               {/* Email */}
@@ -175,23 +222,23 @@ const Contact = () => {
                       dark ? "text-slate-500" : "text-slate-400"
                     }`}
                   >
-                    Email
+                    Email support
                   </span>
 
                   <a
-                    href="mailto:support@pulsehub.app"
-                    className={`mt-1 block truncate text-sm font-semibold transition-colors ${
+                    href="mailto:smartilixiousintekhab0786@gmail.com"
+                    className={`mt-1 block break-all text-sm font-semibold transition-colors ${
                       dark
                         ? "text-slate-200 hover:text-violet-400"
                         : "text-slate-800 hover:text-violet-600"
                     }`}
                   >
-                    support@pulsehub.app
+                    smartilixiousintekhab0786@gmail.com
                   </a>
                 </div>
               </div>
 
-              {/* Response note */}
+              {/* Support note */}
               <div
                 className={`mt-4 flex gap-4 rounded-2xl border p-5 ${
                   dark
@@ -215,24 +262,24 @@ const Contact = () => {
                       dark ? "text-slate-200" : "text-slate-800"
                     }`}
                   >
-                    Usually respond within 24 hours
+                    We're ready to listen
                   </strong>
 
                   <p
                     className={`mt-1 text-sm leading-6 ${
-                      dark ? "text-slate-500" : "text-slate-500"
+                      dark ? "text-slate-400" : "text-slate-500"
                     }`}
                   >
-                    Send us your question and we&apos;ll get back to you as
-                    soon as possible.
+                    Send us your question or feedback by email, and we'll review
+                    your message and respond as soon as we can.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* ================= FORM CARD ================= */}
+            {/* FORM CARD */}
             <div
-              className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 ${
+              className={`relative min-h-[480px] overflow-hidden rounded-3xl border p-6 sm:p-8 flex flex-col justify-center ${
                 dark
                   ? "border-white/[0.08] bg-[#111113] shadow-2xl shadow-black/20"
                   : "border-slate-200 bg-white shadow-xl shadow-slate-200/40"
@@ -241,184 +288,223 @@ const Contact = () => {
               {/* Card glow */}
               <div
                 className={`pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full blur-3xl ${
-                  dark
-                    ? "bg-violet-600/10"
-                    : "bg-violet-500/5"
+                  dark ? "bg-violet-600/10" : "bg-violet-500/5"
                 }`}
               />
 
-              <div className="relative">
-                <span
-                  className={`text-xs font-bold tracking-[0.2em] ${
-                    dark ? "text-violet-400" : "text-violet-600"
-                  }`}
-                >
-                  SEND A MESSAGE
-                </span>
-
-                <h3
-                  className={`mt-2 text-2xl font-bold ${
-                    dark ? "text-white" : "text-slate-950"
-                  }`}
-                >
-                  How can we help?
-                </h3>
-
-                <form
-                  onSubmit={handleSubmit}
-                  className="mt-7 space-y-5"
-                >
-                  {/* Name + Email */}
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    {/* Name */}
-                    <div>
-                      <label
-                        htmlFor="name"
-                        className={`mb-2 block text-sm font-medium ${
-                          dark ? "text-slate-300" : "text-slate-700"
-                        }`}
-                      >
-                        Name
-                      </label>
-
-                      <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        placeholder="Your name"
-                        value={form.name}
-                        onChange={handleChange}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
-                          dark
-                            ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
-                            : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                        }`}
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className={`mb-2 block text-sm font-medium ${
-                          dark ? "text-slate-300" : "text-slate-700"
-                        }`}
-                      >
-                        Email
-                      </label>
-
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={form.email}
-                        onChange={handleChange}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
-                          dark
-                            ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
-                            : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Subject */}
-                  <div>
-                    <label
-                      htmlFor="subject"
-                      className={`mb-2 block text-sm font-medium ${
-                        dark ? "text-slate-300" : "text-slate-700"
-                      }`}
-                    >
-                      Subject
-                    </label>
-
-                    <input
-                      id="subject"
-                      name="subject"
-                      type="text"
-                      placeholder="What can we help you with?"
-                      value={form.subject}
-                      onChange={handleChange}
-                      className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
-                        dark
-                          ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
-                          : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                      }`}
-                    />
-                  </div>
-
-                  {/* Message */}
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className={`mb-2 block text-sm font-medium ${
-                        dark ? "text-slate-300" : "text-slate-700"
-                      }`}
-                    >
-                      Message
-                    </label>
-
-                    <textarea
-                      id="message"
-                      name="message"
-                      rows={6}
-                      placeholder="Tell us a little more..."
-                      value={form.message}
-                      onChange={handleChange}
-                      className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
-                        dark
-                          ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
-                          : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                      }`}
-                    />
-                  </div>
-
-                  {/* Error */}
-                  {status === "error" && (
+              <div className="relative w-full">
+                {status === "success" ? (
+                  /* SUCCESS STATE DISPLAY (CENTERED) */
+                  <div className="flex flex-col items-center justify-center py-8 text-center animate-in fade-in zoom-in duration-300">
                     <div
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
+                      className={`flex h-16 w-16 items-center justify-center rounded-full mb-4 ${
                         dark
-                          ? "border-red-500/20 bg-red-500/10 text-red-400"
-                          : "border-red-200 bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {Icons.alertCircle}
-                      <span>
-                        Please fill in all required fields.
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Success */}
-                  {status === "success" && (
-                    <div
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
-                        dark
-                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                          : "border-emerald-200 bg-emerald-50 text-emerald-600"
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-emerald-100 text-emerald-600"
                       }`}
                     >
                       {Icons.checkCircle}
-                      <span>
-                        Thanks! Your message has been received.
-                      </span>
                     </div>
-                  )}
 
-                  {/* Submit */}
-                  <button
-                    type="submit"
-                    className="group flex w-full py-3 items-center justify-center gap-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 active:translate-y-0"
-                  >
-                    <span>Send message</span>
+                    <h3
+                      className={`text-2xl font-bold ${
+                        dark ? "text-white" : "text-slate-950"
+                      }`}
+                    >
+                      Message Sent Successfully!
+                    </h3>
 
-                    <span className="transition-transform duration-200 group-hover:translate-x-1">
-                      {Icons.arrowRight}
+                    <p
+                      className={`mt-2 max-w-md text-sm leading-6 ${
+                        dark ? "text-slate-400" : "text-slate-600"
+                      }`}
+                    >
+                      Thank you for contacting PulseHub. We have received your
+                      message and will get back to you as soon as possible.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition-all hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/50 active:scale-[0.99]"
+                    >
+                      <span>Send another response</span>
+                      <span>{Icons.arrowRight}</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* REGULAR FORM STATE */
+                  <>
+                    <span
+                      className={`text-xs font-bold tracking-[0.2em] ${
+                        dark ? "text-violet-400" : "text-violet-600"
+                      }`}
+                    >
+                      CONTACT SUPPORT
                     </span>
-                  </button>
-                </form>
+
+                    <h3
+                      className={`mt-2 text-2xl font-bold ${
+                        dark ? "text-white" : "text-slate-950"
+                      }`}
+                    >
+                      Send us a message
+                    </h3>
+
+                    <p
+                      className={`mt-2 text-sm leading-6 ${
+                        dark ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Have a question, suggestion, or need assistance? Tell us
+                      how we can help.
+                    </p>
+
+                    <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+                      {/* Name + Email */}
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        {/* Name */}
+                        <div>
+                          <label
+                            htmlFor="name"
+                            className={`mb-2 block text-sm font-medium ${
+                              dark ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            Full name *
+                          </label>
+
+                          <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            autoComplete="name"
+                            placeholder="Enter your name"
+                            value={form.name}
+                            onChange={handleChange}
+                            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
+                              dark
+                                ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
+                                : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                          <label
+                            htmlFor="email"
+                            className={`mb-2 block text-sm font-medium ${
+                              dark ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            Email address *
+                          </label>
+
+                          <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="you@example.com"
+                            value={form.email}
+                            onChange={handleChange}
+                            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
+                              dark
+                                ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
+                                : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Subject */}
+                      <div>
+                        <label
+                          htmlFor="subject"
+                          className={`mb-2 block text-sm font-medium ${
+                            dark ? "text-slate-300" : "text-slate-700"
+                          }`}
+                        >
+                          Subject *
+                        </label>
+
+                        <input
+                          id="subject"
+                          name="subject"
+                          type="text"
+                          placeholder="How can we assist you?"
+                          value={form.subject}
+                          onChange={handleChange}
+                          className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
+                            dark
+                              ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
+                              : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
+                          }`}
+                        />
+                      </div>
+
+                      {/* Message */}
+                      <div>
+                        <label
+                          htmlFor="message"
+                          className={`mb-2 block text-sm font-medium ${
+                            dark ? "text-slate-300" : "text-slate-700"
+                          }`}
+                        >
+                          Message *
+                        </label>
+
+                        <textarea
+                          id="message"
+                          name="message"
+                          rows={6}
+                          placeholder="Describe your question or concern..."
+                          value={form.message}
+                          onChange={handleChange}
+                          className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-slate-500 ${
+                            dark
+                              ? "border-white/[0.08] bg-white/[0.03] text-white focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/10"
+                              : "border-slate-200 bg-slate-50 text-slate-900 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-500/10"
+                          }`}
+                        />
+                      </div>
+
+                      {/* Error State */}
+                      {status === "error" && (
+                        <div
+                          role="alert"
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
+                            dark
+                              ? "border-red-500/20 bg-red-500/10 text-red-400"
+                              : "border-red-200 bg-red-50 text-red-600"
+                          }`}
+                        >
+                          {Icons.alertCircle}
+                          <span>{errorMessage}</span>
+                        </div>
+                      )}
+
+                      {/* Submit Button */}
+                      <button
+                        type="submit"
+                        className="group flex w-full items-center justify-center gap-2 cursor-pointer rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition-all hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/50 active:scale-[0.99]"
+                      >
+                        {
+                          loading ?
+                          <span>Sending...</span>
+                          :
+                          <div className="flex justify-center items-center gap-1">
+                            <span>Send message</span>
+                            <span className="size-3.5 transition-transform duration-200 group-hover:translate-x-1">
+                              {Icons.arrowRight}
+                            </span>
+                          </div>
+                        }
+                      </button>
+                    </form>
+                  </>
+                )}
               </div>
             </div>
           </div>

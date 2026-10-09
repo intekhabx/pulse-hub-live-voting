@@ -1,14 +1,15 @@
 import { useContext, useEffect, useRef } from "react";
 import { DataContext } from "../Context/ContextApi";
 import { Link } from "@tanstack/react-router";
+import { Icons } from "../components/Dashboard/Icons";
 
 
 const STATS = [
-  { value: "50K+", label: "Active Polls" },
-  { value: "2M+", label: "Responses" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "180+", label: "Countries" },
-];
+  { value: "Live", label: "Voting Results", icon: "chart" },
+  { value: "Secure", label: "Authentication", icon: "security" },
+  { value: "Clear", label: "Response Insights", icon: "insights" },
+  { value: "Easy", label: "Poll Creation", icon: "audience" },
+] as const;
 
 export default function Hero() {
 
@@ -87,7 +88,7 @@ export default function Hero() {
         }`}
         style={{ fontFamily: "'Syne', sans-serif" }}
       >
-        Collect feedback
+        Ideas into insights
         <span className="block relative">
           <span className="relative">
             at the speed of
@@ -108,8 +109,7 @@ export default function Hero() {
         }`}
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       >
-        PulseHub lets you build beautiful polls, share them instantly, and watch
-        responses roll in — all with live analytics and zero friction.
+        Create polls, collect real-time responses, and turn audience feedback into smarter decisions, go all in one place with <span className="font-semibold">PulseHub.</span>
       </p>
 
       {/* ── CTAs ── */}
@@ -195,22 +195,25 @@ export default function Hero() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="relative z-10 mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-12 animate-[fadeInUp_0.8s_ease_0.5s_forwards] opacity-0">
-        {STATS.map(({ value, label }) => (
-          <div key={label} className="text-center">
-            <div
-              className={`text-3xl font-black bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent`}
-              style={{ fontFamily: "'Syne', sans-serif" }}
-            >
-              {value}
-            </div>
-            <div className={`text-xs mt-1 ${dark ? "text-gray-500" : "text-gray-400"}`}
-              style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              {label}
-            </div>
-          </div>
-        ))}
+
+{/* ── Stats / Product Highlights ── */}
+<div className="relative z-10 mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-12 animate-[fadeInUp_0.8s_ease_0.5s_forwards] opacity-0">
+  {STATS.map(({ value, label, icon }) => (
+    <div key={label} className="group flex flex-col items-center text-center gap-3">
+      <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-500 transition-all duration-300 group-hover:scale-110 group-hover:border-fuchsia-500/40 group-hover:text-fuchsia-500">
+        {Icons[icon]}
       </div>
+      <div>
+        <div className={`text-xl sm:text-2xl font-black ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+          {value}
+        </div>
+        <div className={`text-xs mt-1 ${dark ? "text-gray-500" : "text-gray-400"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          {label}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
     </section>
   );
 }
