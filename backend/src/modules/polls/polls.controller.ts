@@ -13,6 +13,7 @@ import userModel from "../auth/auth.model";
 import { hasFeatureOnSubscriptionPlan } from "../../utils/user-subscription-plan.utils";
 import usageModel from "../subscription/usage.model";
 import subscriptionModel from "../subscription/subscription.model";
+import agent from "../../agent/agent";
 
 
 
@@ -1131,4 +1132,29 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
   
 
   ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);
+})
+
+
+
+
+// *****Ai Agent Controller*****
+export const callAIAgentToResponse = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:1 - extract the prompt from body
+  const {prompt} = req.body;
+
+  // step:2 - add input guardrails
+
+  // step:3 - call the llm to get the response
+  console.log("Wait for the agent response")
+  const response = await agent.invoke({
+    messages: [
+      {role: "user", content: prompt}
+    ]
+  });
+
+  // console.log("Response:-", response);
+  const result = response.structuredResponse;
+  console.dir(result, {depth: null});
+
+  ApiResponse.ok(res, "DONE", result);
 })

@@ -34,7 +34,10 @@ router.get("/get-recent-activity", isLoggedIn, controller.getRecentActivity);
 
 router.post("/publish-poll/:pollId", isLoggedIn, controller.publishPollResult);
 
-router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQuestionsAnalytics)
+router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQuestionsAnalytics);
+
+// agent routes
+router.post("/agent", isLoggedIn, controller.callAIAgentToResponse );
 
 
 export default router;

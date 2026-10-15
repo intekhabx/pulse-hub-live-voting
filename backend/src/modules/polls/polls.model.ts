@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { maxLength } from "zod";
 
 
 const optionSchema = new mongoose.Schema({
@@ -32,7 +33,8 @@ const pollSchema = new mongoose.Schema({
     required: [true, "title is required"]
   },
   description: {
-    type: String
+    type: String,
+    maxLength: 500,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
