@@ -13,6 +13,9 @@ import userModel from "../auth/auth.model";
 import { hasFeatureOnSubscriptionPlan } from "../../utils/user-subscription-plan.utils";
 import usageModel from "../subscription/usage.model";
 import subscriptionModel from "../subscription/subscription.model";
+import agent from "../../agent/agent";
+import inputGuardrail from "../../agent/guardrails/input.guardrail";
+import callMainLLM from "../../agent/agent";
 
 
 
@@ -1131,4 +1134,26 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
   
 
   ApiResponse.ok(res, "poll votes percentage fetched successfully", votesPercentages);
+})
+
+
+
+
+// *****Ai Agent Controller*****
+export const callAIAgentToResponse = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:1 - extract the prompt from body and userId
+  const {prompt} = req.body;
+  const userId = req.user?.id.toString()!;
+
+  // step:2 - check the input is right or not by inputGuardrail
+  const isAllowed = await inputGuardrail(prompt, userId);
+  if(isAllowed.decision === "reject"){
+    throw ApiError.forbidden(isAllowed.reason);
+  }
+
+  // step:3 - now the input is right then call the main llm to get the response
+  const result = await callMainLLM(prompt, userId);
+  // console.dir(result, {depth: null});
+
+  ApiResponse.ok(res, "Ai Agent response received", result);
 })

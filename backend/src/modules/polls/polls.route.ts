@@ -3,7 +3,7 @@ import { isLoggedIn } from "../auth/auth.middleware";
 import * as controller from './polls.controller';
 import { checkAuthenticatedAndAnonymousUser } from "./polls.middleware";
 import validate from "../../middleware/validate.middleware";
-import { createPollDto, updatePollDto } from "./polls.dto";
+import { callAiAgentDto, createPollDto, updatePollDto } from "./polls.dto";
 
 const router = express.Router();
 
@@ -34,7 +34,10 @@ router.get("/get-recent-activity", isLoggedIn, controller.getRecentActivity);
 
 router.post("/publish-poll/:pollId", isLoggedIn, controller.publishPollResult);
 
-router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQuestionsAnalytics)
+router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQuestionsAnalytics);
+
+// agent routes
+router.post("/agent", isLoggedIn, validate(callAiAgentDto), controller.callAIAgentToResponse );
 
 
 export default router;

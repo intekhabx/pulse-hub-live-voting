@@ -74,6 +74,12 @@ const pollService = {
     const {data} = await api.get(`/api/polls/get-published-poll-analytics/${pollId}`);
     return data;
   },
+
+  // Ai agent service call
+  async generatePollWithAI(prompt: string){
+    const {data} = await api.post("/api/polls/agent", {prompt});
+    return data;
+  }
   
 }
 
