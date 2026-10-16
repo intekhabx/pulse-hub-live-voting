@@ -71,29 +71,65 @@ export function ManualPollCreation({ setActive }: { setActive: (s: string) => vo
           />
         </div>
 
+        {/* expiresAt and allowAnonymous */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>Expires At</label>
-            <div className="relative group">
-              <input
-                type="datetime-local"
-                value={expiresAt}
-                min={new Date().toISOString().slice(0, 16)}
-                onChange={e => setExpiresAt(e.target.value)}
-                className={`${inputCls} pr-10 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              />
-              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 group-focus-within:bg-violet-500/20 transition-colors">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="4.5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/>
-                  <path d="M3 9.5h18M8 2.5v3M16 2.5v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  <circle cx="8" cy="14" r="1.1" fill="currentColor"/>
-                  <circle cx="12" cy="14" r="1.1" fill="currentColor"/>
-                  <circle cx="16" cy="14" r="1.1" fill="currentColor"/>
-                </svg>
-              </span>
+            {/* expiresAt */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>Expires At</label>
+              <div className="relative group">
+                <input
+                  type="datetime-local"
+                  value={expiresAt}
+                  min={new Date().toISOString().slice(0, 16)}
+                  onChange={e => setExpiresAt(e.target.value)}
+                  className={`${inputCls} pr-10 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                />
+                <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 group-focus-within:bg-violet-500/20 transition-colors">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="4.5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/>
+                    <path d="M3 9.5h18M8 2.5v3M16 2.5v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    <circle cx="8" cy="14" r="1.1" fill="currentColor"/>
+                    <circle cx="12" cy="14" r="1.1" fill="currentColor"/>
+                    <circle cx="16" cy="14" r="1.1" fill="currentColor"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            {/* expiresAt buttons */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {[1, 2, 3, 7].map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => {
+                    const expiry = new Date();
+                    expiry.setDate(expiry.getDate() + days);
+
+                    const formattedDate = new Date(
+                      expiry.getTime() - expiry.getTimezoneOffset() * 60000
+                    )
+                      .toISOString()
+                      .slice(0, 16);
+
+                    setExpiresAt(formattedDate);
+                  }}
+                  className="px-2 py-1 rounded-full text-xs font-medium
+                    text-violet-300 bg-violet-500/10
+                    border border-violet-500/20
+                    hover:bg-violet-500/20 hover:border-violet-500/40
+                    transition-all"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {days} {days === 1 ? "day" : "days"}
+                </button>
+              ))}
             </div>
           </div>
+
+          {/* allowAnonymous */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>Response Mode</label>
             <div className="grid grid-cols-2 gap-1 p-1 h-[42px] rounded-xl bg-white/[0.03] border border-white/[0.08]">

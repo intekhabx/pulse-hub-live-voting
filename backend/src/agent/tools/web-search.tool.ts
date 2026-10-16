@@ -32,7 +32,7 @@ const webSearch = tool(
       topic: "general",
     });
 
-    console.log("WebSearchResult:", response.results);
+    console.log("WebSearchResult:", response.results[0]?.title);
     return response.results.map((result) => ({
       title: result.title,
       url: result.url,

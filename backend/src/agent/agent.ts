@@ -4,6 +4,7 @@ import SYSTEM_PROMPT from "./utils/system-prompt";
 import getCurrentDateAndTime from "./tools/current-datetime.tool";
 import webSearch from "./tools/web-search.tool";
 import responseStructure from "./utils/structured-response";
+import { addMessagesInChatHistory, getRedisChatHistory } from "./utils/agent-context";
 
 
 
@@ -29,4 +30,29 @@ const agent = createAgent({
   responseFormat: toolStrategy(responseStructure),
 })
 
-export default agent;
+
+export default async function callMainLLM(prompt: string, userId: string){
+  // step:1 - extract the previous history of chat
+  const key = `agent-chat:${userId}`;
+  const history = await getRedisChatHistory(key);
+
+  // step:2 - after extracting previous chat history add the user current prompt in chat history
+  const userMessage = JSON.stringify({role: "user", content: prompt});
+  await addMessagesInChatHistory(key, userMessage);
+
+  // step:3 - invoke or call the llm
+  const response = await agent.invoke({
+    messages: [
+      // {role: "system", content: SYSTEM_PROMPT}, //we didn't need it because we alredy add this when we create agent
+      ...history,
+      {role: "user", content: prompt},
+    ],
+  })
+
+  // step:4 - add the llm response in the redis chat history
+  const llmResponse = JSON.stringify({role: "assistant", content: response.structuredResponse})
+  await addMessagesInChatHistory(key, llmResponse);
+
+  console.log("MainLLMResponse:-", response.structuredResponse);
+  return response.structuredResponse;
+}

@@ -30,3 +30,9 @@ export const updatePollDto = z.object({
   allowAnonymous: z.boolean().optional(),
   expiresAt: z.coerce.date().optional(),
 });
+
+
+// Ai agent Dto
+export const callAiAgentDto = z.object({
+  prompt: z.string().min(1),
+});
