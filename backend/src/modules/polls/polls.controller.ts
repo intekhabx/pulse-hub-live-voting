@@ -1141,18 +1141,28 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
 
 // *****Ai Agent Controller*****
 export const callAIAgentToResponse = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:0 - create a abort controller for every requst of the user, so when user canecl their request we can stop
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  res.on("close", ()=> {
+    if(!res.writableEnded){
+      controller.abort();
+    }
+  })
+
   // step:1 - extract the prompt from body and userId
   const {prompt} = req.body;
   const userId = req.user?.id.toString()!;
 
   // step:2 - check the input is right or not by inputGuardrail
-  const isAllowed = await inputGuardrail(prompt, userId);
+  const isAllowed = await inputGuardrail(prompt, userId, signal);
   if(isAllowed.decision === "reject"){
     throw ApiError.forbidden(isAllowed.reason);
   }
 
   // step:3 - now the input is right then call the main llm to get the response
-  const result = await callMainLLM(prompt, userId);
+  const result = await callMainLLM(prompt, userId, signal);
   // console.dir(result, {depth: null});
 
   ApiResponse.ok(res, "Ai Agent response received", result);

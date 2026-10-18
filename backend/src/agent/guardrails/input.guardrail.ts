@@ -63,17 +63,23 @@ const agent = createAgent({
 })
 
 
-export default async function inputGuardrail(prompt: string, userId: string){
+export default async function inputGuardrail(prompt: string, userId: string, signal: AbortSignal){
 
   const key = `agent-chat:${userId}`;
   const history = await getRedisChatHistory(key);
+
+  // if user cancel their request then abort processing
+  signal.throwIfAborted();
 
   const res = await agent.invoke({
     messages: [
       ...history,
       {role: "user", content: prompt}
-    ]
-  });
+    ],
+  }, {signal});  //when user cancel their request then stop it
+
+  // if user cancel their request then abort the result
+  signal.throwIfAborted();
 
   console.log("InputGuardrailResponse: ", res.structuredResponse);
   return res.structuredResponse;

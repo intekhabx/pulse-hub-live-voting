@@ -76,8 +76,8 @@ const pollService = {
   },
 
   // Ai agent service call
-  async generatePollWithAI(prompt: string){
-    const {data} = await api.post("/api/polls/agent", {prompt});
+  async generatePollWithAI(prompt: string, signal: AbortSignal){
+    const {data} = await api.post("/api/polls/agent", {prompt}, {signal});
     return data;
   }
   

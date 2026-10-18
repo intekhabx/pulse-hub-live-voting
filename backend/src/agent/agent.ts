@@ -31,7 +31,7 @@ const agent = createAgent({
 })
 
 
-export default async function callMainLLM(prompt: string, userId: string){
+export default async function callMainLLM(prompt: string, userId: string, signal: AbortSignal){
   // step:1 - extract the previous history of chat
   const key = `agent-chat:${userId}`;
   const history = await getRedisChatHistory(key);
@@ -40,6 +40,9 @@ export default async function callMainLLM(prompt: string, userId: string){
   const userMessage = JSON.stringify({role: "user", content: prompt});
   await addMessagesInChatHistory(key, userMessage);
 
+  // if user cancel their request then abort it
+  signal.throwIfAborted();
+
   // step:3 - invoke or call the llm
   const response = await agent.invoke({
     messages: [
@@ -47,7 +50,10 @@ export default async function callMainLLM(prompt: string, userId: string){
       ...history,
       {role: "user", content: prompt},
     ],
-  })
+  }, {signal}); //when user cancel their request then stop it
+
+  // if user cancel their request then abort it
+  signal.throwIfAborted();
 
   // step:4 - add the llm response in the redis chat history
   const llmResponse = JSON.stringify({role: "assistant", content: response.structuredResponse})

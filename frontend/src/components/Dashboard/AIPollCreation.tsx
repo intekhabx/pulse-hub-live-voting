@@ -1,42 +1,7 @@
-import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
-import toast from "react-hot-toast";
+import { useContext } from "react";
 import { PollCreationContext } from "../../Context/PollCreationContext";
 import { Icons } from "./Icons";
-import pollService from "../../services/pollService";
 
-
-type RequireInputSchema = {
-  message: string;
-  question: string;
-  options: string[];
-};
-
-type FinalOutputSchema = {
-  title: string;
-  description: string;
-  expiresAt: string;
-  allowAnonymous: boolean;
-  questions: {
-    questionText: string;
-    required: boolean;
-    options: {
-      optionText: string;
-    }[];
-  }[];
-  responseMessage: string;
-};
-
-type AIResponseData =
-    { type: "require-input"; input: RequireInputSchema }
-  | { type: "final-response"; output: FinalOutputSchema };
-
-type Message = {
-  id: number;
-  role: "ai" | "user";
-  text: string;
-  options?: string[];
-  error?: boolean;
-};
 
 type Props = {
   open: boolean;
@@ -44,13 +9,6 @@ type Props = {
   onApplied?: () => void;
 };
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: 0,
-    role: "ai",
-    text: "Hi! What should your poll be about? Describe your idea, and I'll help you build the form.",
-  },
-];
 
 export default function AIPollCreation({ open, onClose, onApplied }: Props) {
 
@@ -60,114 +18,10 @@ export default function AIPollCreation({ open, onClose, onApplied }: Props) {
     throw new Error("AIPollCreation must be rendered inside PollCreationContextProvider");
   }
 
-  const { setTitle, setDescription, setAllowAnonymous, setExpiresAt, setQuestions, setErrors } = pollCreationContext;
+  const {messages, typing, input, setInput, listRef, callAiAgent, resetChat} = pollCreationContext;
 
 
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
-  const [typing, setTyping] = useState(false);
-  const [input, setInput] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    listRef.current?.scrollTo({
-      top: listRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, typing, open]);
-
-
-  // function that add messages in chat history
-  const addMessage = (message: Message) => {
-    setMessages((prev) => [...prev, message]);
-  };
-
-
-  // function that apply in ai Agent output response data into form
-  const applyAgentResponseIntoForm = (data: FinalOutputSchema) => {
-    setTitle(data.title);
-    setDescription(data.description);
-    setAllowAnonymous(data.allowAnonymous);
-    setExpiresAt(data.expiresAt);
-    setQuestions(
-      data.questions.map((question) => ({
-        questionText: question.questionText,
-        required: question.required,
-        options: question.options.map((option) => ({
-          optionText: option.optionText,
-        })),
-      }))
-    );
-    // setError as empty
-    setErrors({});
-  };
-
-
-  // functiont that call the llm agne get the 
-  const callAiAgent = async (e: FormEvent<HTMLFormElement> | null, userInput: string) => {
-    e?.preventDefault();
-
-    // step:1 - sanitize the input 
-    const prompt = userInput.trim();
-    if (!prompt) {
-      toast.error("Please enter a message.");
-      return;
-    }
-
-    if (typing) return;
-
-    //step:2 - add user msg in the chat history
-    addMessage({id: Date.now(), role: "user", text: prompt });
-
-    setInput("");
-    setTyping(true);
-
-    try {
-      // step:3 - call the ai agent to get response
-      const res = await pollService.generatePollWithAI(prompt);
-      const data: AIResponseData = res.data;
-      console.log(data);
-
-      // step:4a - if ai agnet need more input
-      if (data.type === "require-input") {
-        addMessage({
-          id: Date.now() + 1,
-          role: "ai",
-          text: `${data.input.message}\n${data.input.question}`,
-          options: data.input.options,
-        });
-        return;
-      }
-
-      // step:4b - apply ai agent poll_creation output response into form
-      applyAgentResponseIntoForm(data.output);
-
-      // step:5 - add Ai response to the chat history
-      addMessage({ id: Date.now() + 1, role: "ai", text: data.output.responseMessage });
-
-      // after onApplied close the form in small screen
-      onApplied?.();
-    } 
-    catch (error: unknown) {
-      const apiError = error as {
-        response?: { data?: { message?: string } };
-        message?: string;
-      };
-
-      const msg = apiError.response?.data?.message || apiError.message || "Something went wrong while generating the poll.";
-      addMessage({ id: Date.now() + 1, role: "ai", text: msg, error: true });
-      toast.error("AI couldn't build the poll.");
-    }
-    finally {
-      setTyping(false);
-    }
-  };
-
-  // function that reset the chat
-  const resetChat = () => {
-    setMessages(INITIAL_MESSAGES);
-    setTyping(false);
-    setInput("");
-  };
 
   return (
     <>
@@ -271,7 +125,7 @@ export default function AIPollCreation({ open, onClose, onApplied }: Props) {
                       key={`${message.id}-${option}-${index}`}
                       type="button"
                       disabled={typing}
-                      onClick={() => void callAiAgent(null, option)}
+                      onClick={() => void callAiAgent(null, option, onApplied)}
                       className="rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-left text-xs text-violet-200 transition-colors hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {option}
@@ -301,7 +155,7 @@ export default function AIPollCreation({ open, onClose, onApplied }: Props) {
         </div>
 
         <form
-          onSubmit={(e) => void callAiAgent(e, input)}
+          onSubmit={(e) => void callAiAgent(e, input, onApplied)}
           className="border-t border-white/[0.06] p-3"
         >
           <div className="flex items-center gap-2">
@@ -317,11 +171,10 @@ export default function AIPollCreation({ open, onClose, onApplied }: Props) {
 
             <button
               type="submit"
-              disabled={!input.trim() || typing}
-              aria-label="Send"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white transition-opacity disabled:opacity-40"
+              aria-label={typing ? "Cancel" : "Send"}
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white transition-opacity disabled:opacity-40 cursor-pointer"
             >
-              {Icons.send}
+              {typing? Icons.cancelCall : Icons.send}
             </button>
           </div>
 
