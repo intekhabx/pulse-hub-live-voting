@@ -25,6 +25,11 @@ const pollService = {
     return data;
   },
 
+  async updatePollBasicDetails(pollId: string, {title, description, expiresAt, allowAnonymous}: IUpdatePoll){
+    const {data} = await api.patch(`/api/polls/update-basic-details/${pollId}`, {title, description, expiresAt, allowAnonymous});
+    return data;
+  },
+
   async getMyPolls(){
     const {data} = await api.get('/api/polls/get-mypolls');
     return data;

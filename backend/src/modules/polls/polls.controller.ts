@@ -747,13 +747,18 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   // step:1 - extract the edited data from body and pollId from params
   const {title, description, expiresAt, questions, allowAnonymous} = req.body;
   const {pollId} = req?.params;
+  const userId = req.user?.id.toString()!;
 
-  // step:2 - find the user to check that question should be created and updated in plan limit
-  const user = await userModel.findById(req.user?.id);
-  if(!user) throw ApiError.unAuthorized("only authenticated user can update polls");
+  // step:2 - only draft poll can be edited
+  const existingPoll = await pollModel.findOne({_id: pollId, createdBy: userId});
+  if(!existingPoll) throw ApiError.notFound("poll does not found or exists");
+
+  if(existingPoll.status !== "draft"){
+    throw ApiError.forbidden("Only draft poll can be edited");
+  }
 
   // step:3 - check the limit of questions before updation
-  checkQuestionLimit(user.plan, questions);
+  checkQuestionLimit(req.user?.plan!, questions);
 
   // step:4 - find the poll using the pollId and also poll is created by same user then update it
   const poll = await pollModel.findOneAndUpdate({_id: pollId, createdBy: req?.user?.id}, {
@@ -768,17 +773,17 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
     throw ApiError.notFound("poll doesn't found or exists");
   }
 
-  // step:5 - (update) remove the old pollAnalytics in the redis
-  await redis.del(`poll:${pollId}`);
+  //? doen't need these steps because only draft poll can be edited
+  // // step:5 - (update) remove the old pollAnalytics in the redis
+  // await redis.del(`poll:${pollId}`); 
 
-  // step:6 - find and remove the old pollExpiry job in the bullmq queue
-  const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
-  if(job){
-    await job.remove();
-  }
+  // // step:6 - find and remove the old pollExpiry job in the bullmq queue
+  // const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+  // if(job){
+  //   await job.remove();
+  // }
 
   // step:7 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
-  const userId = req?.user?.id.toString()!;
   const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
   if(expiresAt && expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
@@ -788,6 +793,12 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Edited & Updated", icon: "update"});
 
   ApiResponse.ok(res, "poll updated successfully");
+})
+
+
+
+export const updatePollBasicDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  
 })
 
 

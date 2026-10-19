@@ -8,6 +8,7 @@ import PlanDetails from "../PlanDetails";
 import subscriptionService from "../../../services/subscriptionService";
 import { handleUpgrade } from "../../../utils/load-razorpay";
 import PaymentSuccessModal from "../PaymentSuccessModal";
+import CustomBranding from "../CustomBranding";
 
 
 const inputCls =
@@ -579,6 +580,11 @@ export function SettingsSection() {
                 </button>
               )}
             </div>
+            <p className="mt-2 text-xs leading-5 text-gray-400 flex items-center justify-center gap-2">
+              <span className="text-xl">&bull; </span>
+              <p>Export all your poll data as a CSV file,
+              including all polls you’ve created and their associated data.</p>
+            </p>
 
             {/* Free plan ke liye helpful info */}
             {plan !== "PRO" && plan !== "PREMIUM" && (
@@ -601,6 +607,11 @@ export function SettingsSection() {
             onClose={()=> setShowPaymentSuccess(false)}
           />
         }
+
+        {/* Custom Branding */}
+        <div className="lg:col-span-2 borde">
+          <CustomBranding plan={plan} />
+        </div>
 
         {/* Plan / Billing */}
         <div className="lg:col-span-2 borde">

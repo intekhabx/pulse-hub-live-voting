@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { maxLength } from "zod";
 
 
 const optionSchema = new mongoose.Schema({

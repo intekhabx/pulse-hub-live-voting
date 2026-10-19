@@ -16,6 +16,8 @@ router.patch('/update-poll-as-active/:pollId', isLoggedIn, controller.updatePoll
 
 router.patch('/update-poll/:pollId', isLoggedIn, validate(updatePollDto), controller.editAndUpdatePoll);
 
+router.patch('/update-basic-details/:pollId', isLoggedIn, controller.updatePollBasicDetails);
+
 router.get('/get-mypolls', isLoggedIn, controller.getMyPolls);
 
 router.get('/get-poll/:pollId', controller.getPollById);
