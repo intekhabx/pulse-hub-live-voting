@@ -8,11 +8,19 @@ import { PollContext } from "../../../Context/PollContext";
 import type { IQuestion } from "../assets/types";
 import { PollCreationContext } from "../../../Context/PollCreationContext";
 import EditPollPopup from "../EditPollPopup";
+import { getPollStatus } from "../../../utils/getPollStatus";
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 500;
 const MAX_OPTIONS = 10;
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+
+const toLocalDateTime = (value: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 
 type Question = {
   _id?: string;
@@ -92,7 +100,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
           description: poll.description ?? "",
           allowAnonymous: poll.allowAnonymous ?? true,
           status: poll.status ?? "draft",
-          expiresAt: poll.expiresAt ? new Date(poll.expiresAt).toISOString().slice(0, 16) : "",
+          expiresAt: toLocalDateTime(poll.expiresAt ?? ""),
           questions: (poll.questions ?? []).map((q: any) => ({
             _id: q._id,
             questionText: q.questionText,
@@ -502,16 +510,16 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
                 <div>
                   {/* Expiry Edit */}
                   {
-                    status !== "draft" && 
-                  <div className="absolute top-3 right-3">
-                    <button 
-                      onClick={() => setIsOpenEditPollPopup(true)}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-amber-400 hover:border-amber-500/30 transition-all flex-shrink-0 cursor-pointer" 
-                      aria-label="Edit" 
-                      title="Edit">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
-                    </button>
-                  </div>
+                  getPollStatus(expiresAt, status) === "active" && 
+                    <div className="absolute top-3 right-3">
+                      <button 
+                        onClick={() => setIsOpenEditPollPopup(true)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-amber-400 hover:border-amber-500/30 transition-all flex-shrink-0 cursor-pointer" 
+                        aria-label="Edit" 
+                        title="Edit">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+                      </button>
+                    </div>
                   }
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>Title</p>
                   <p className="text-sm text-gray-100 font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{title}</p>

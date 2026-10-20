@@ -6,7 +6,7 @@ import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
 import { io } from "../../server";
-import mongoose from "mongoose";
+import mongoose, { type Date } from "mongoose";
 import redis from "../../config/redis.config";
 import { pollExpiryQueue } from "../../config/bullmq.config";
 import userModel from "../auth/auth.model";
@@ -221,7 +221,7 @@ const updateRedisPollAnalyticsData = async(key: string, answers:{questionId: str
   }
 
   // step:3 - recalculate overall percentages
-  analyticsData.authecticatedPercentage = ((analyticsData.authenticatedUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
+  analyticsData.authenticatedPercentage = ((analyticsData.authenticatedUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
   analyticsData.anonymousPercentage = ((analyticsData.anonymousUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
 
   //step:4 - updating the answer
@@ -754,7 +754,7 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   if(!existingPoll) throw ApiError.notFound("poll does not found or exists");
 
   if(existingPoll.status !== "draft"){
-    throw ApiError.forbidden("Only draft poll can be edited");
+    throw ApiError.badRequest("Only draft poll can be edited");
   }
 
   // step:3 - check the limit of questions before updation
@@ -797,8 +797,54 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
 
 
 
-export const updatePollBasicDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
-  
+export const updateActivePollBasicDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+   // step:1 - extract the edited data from body and pollId from params
+  const {title, description, expiresAt, allowAnonymous} = req.body;
+  const {pollId} = req?.params;
+  const userId = req.user?.id.toString()!;
+
+  // step:2 - find the poll and should be created by same user
+  const poll = await pollModel.findOne({_id: pollId, createdBy: userId});
+  if(!poll){
+    throw ApiError.notFound("poll doesn't found or exists");
+  }
+
+  // step:3 - check poll is expired or not, only acitve poll basic details can be updated
+  if(poll.expiresAt){
+    const expiry = new Date(poll.expiresAt).getTime();
+    const nowTime = Date.now();
+
+    if(expiry < nowTime){
+      throw ApiError.badRequest("Only active poll can be edited");
+    }
+  }
+
+  // step:4 - update the poll
+  poll.title = title;
+  poll.description = description;
+  poll.allowAnonymous = allowAnonymous;
+  poll.expiresAt = expiresAt;
+  await poll.save();
+
+  // step:5 - (update) remove the old pollAnalytics in the redis
+  await redis.del(`poll:${pollId}`); 
+
+  // step:6 - find and remove the old pollExpiry job in the bullmq queue
+  const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+  if(job){
+    await job.remove();
+  }
+
+  // step:7 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
+  const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
+  if(expiresAt && expiryDelayInMiliSecond > 0){
+    await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
+  }
+
+  // step:8 - add pollUpdated in recent_activity in REDIS
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Edited & Updated", icon: "update"});
+
+  ApiResponse.ok(res, "poll updated successfully");
 })
 
 

@@ -21,6 +21,7 @@ interface IEditPollPopupProps {
 }
 
 export default function EditPollPopup({ isOpen, onClose, onSubmit, poll }: IEditPollPopupProps) {
+
   const toLocalDateTime = (value: string) => {
     if (!value) return "";
     const date = new Date(value);
@@ -34,6 +35,8 @@ export default function EditPollPopup({ isOpen, onClose, onSubmit, poll }: IEdit
     expiresAt: toLocalDateTime(poll?.expiresAt || ""),
     allowAnonymous: poll?.allowAnonymous ?? true,
   });
+  const [isLoading, setIsLoading] = useState(false);
+  
 
   useEffect(() => {
     if (isOpen) {
@@ -57,15 +60,19 @@ export default function EditPollPopup({ isOpen, onClose, onSubmit, poll }: IEdit
 
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true)
     try {
-      e.preventDefault();
-      await pollService.updatePollBasicDetails(poll.pollId, formData);
+      await pollService.updateActivePollBasicDetails(poll.pollId, formData);
       toast.success("Poll updated successfully");
       onSubmit(formData);
     } 
     catch (error: any) {
       console.log(error);
       toast.error(error?.response?.data.message || "Something went wrong while updating")
+    }
+    finally{
+      setIsLoading(false);
     }
   };
 
@@ -147,7 +154,7 @@ export default function EditPollPopup({ isOpen, onClose, onSubmit, poll }: IEdit
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-800/60">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-800 bg-transparent px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white">Cancel</button>
-            <button type="submit" className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:opacity-90">Save Changes</button>
+            <button type="submit" disabled={isLoading} className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition hover:opacity-90 cursor-pointer">{isLoading ? "Saving...": "Save Changes"}</button>
           </div>
 
         </form>

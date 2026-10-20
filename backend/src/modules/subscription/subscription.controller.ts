@@ -1,3 +1,4 @@
+import fs from "fs";
 import type {Response} from "express";
 import { SUBSCRIPTION_PLAN_DETAILS } from "../../constants/subscription-plan-details";
 import type { AuthRequest, IPollAnalytics } from "../../types/index.types";
@@ -10,6 +11,8 @@ import instance from "../../config/razorpay.config";
 import subscriptionModel from "./subscription.model";
 import { subscriptionCancellationQueue } from "../../config/bullmq.config";
 import userModel from "../auth/auth.model";
+import customBrandingModel from "./custom-branding.model";
+import imagekit from "../../config/imagekit.config";
 
 
 
@@ -61,6 +64,34 @@ const convertPollAnalyticsIntoCSV = (pollAnalytics: IPollAnalytics, title: strin
     ...rows.map((row) => 
       row.map(escapeCSV).join(",")), 
   ].join("\n");
+}
+
+
+const uploadImageFileOnImageKit = async (file: Express.Multer.File) => {
+  try {
+    //step:1 - create a stream of the file
+    const streamFile = fs.createReadStream(file.path);
+
+    //step:2 - upload the image file on imagekit
+    const uploadResponse = await imagekit.files.upload({
+      file: streamFile,
+      fileName: file.filename,
+      folder: "/pulsehub",
+    })
+
+    //step:3 - after uploading delete the local file stored on server
+    fs.unlinkSync(file.path)
+
+    return uploadResponse;
+  } 
+  catch (error: unknown) {
+    // if some error happens also delete file from server
+    if(file.path && fs.existsSync(file.path)){
+      fs.unlinkSync(file.path);
+    }
+    console.log(error);
+    throw new Error("Something went wrong while uploading on imagekit");
+  }
 }
 
 
@@ -126,6 +157,49 @@ export const exportAllPollCSV = asyncHandler(async(req: AuthRequest, res: Respon
     res.setHeader("Content-Type", "text/csv; charset=utf-8"); 
     res.setHeader( "Content-Disposition", `attachment; filename="${req.user?.id}-user-polls.csv"` ); 
     res.status(200).send(finalCSV); //here we directly send blob data not json
+})
+
+
+
+export const addCustomBranding = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - extract the text data from body
+  const {brandName, websiteUrl, primaryColor, footerText } = req.body;
+
+  // step:2 - extract the image file
+  const file = req.file;
+  if(!file){
+    throw ApiError.notFound("image file doesn't found")
+  }
+
+  // step:3 - upload image file in the imagekit
+  const uploadResponse = await uploadImageFileOnImageKit(file);
+
+  // step:4 - create a new customBrand
+  await customBrandingModel.create({
+    userId: req.user?.id,
+    brandName,
+    brandImageUrl: uploadResponse.url,
+    websiteUrl,
+    primaryColor,
+    footerText,
+  })
+
+  ApiResponse.ok(res, "Branding Updated Successfully");
+})
+
+
+
+export const getCustomBrandingDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - find the latest active custom branding details
+  const branding = await customBrandingModel.findOne({userId: req.user?.id}).sort({createdAt: -1});
+  if(!branding){
+    throw ApiError.notFound("Custom Branding not found");
+  }
+
+  // step:2 - now optimise the image size
+
+
+  ApiResponse.ok(res, "Branding fetched sucessfully", branding);
 })
 
 

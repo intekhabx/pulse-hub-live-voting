@@ -32,6 +32,14 @@ export const updatePollDto = z.object({
 });
 
 
+export const updateActivePollBasicDetailsDto = z.object({
+  title: z.string().trim().min(2, "Title is too short").max(200, "Poll title cannot exceed 200 characters"),
+  description: z.string().trim().max(500, "Description cannot exceed 500 characters").optional(),
+  allowAnonymous: z.boolean({error: "allowAnonymous must be a boolean"}).optional(),
+  expiresAt: z.coerce.date().optional(),
+});
+
+
 // Ai agent Dto
 export const callAiAgentDto = z.object({
   prompt: z.string().min(1),

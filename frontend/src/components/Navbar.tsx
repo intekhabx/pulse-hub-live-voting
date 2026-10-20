@@ -72,7 +72,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
             {navLinks.map((link) => (
               <li key={link}>
                 <a
-                  href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
+                  href={`/#${link.toLowerCase().replace(/\s+/g, "-")}`}
                   className={`text-sm font-medium tracking-wide transition-colors duration-200 hover:text-violet-500 ${
                     dark ? "text-gray-400" : "text-gray-500"
                   }`}
