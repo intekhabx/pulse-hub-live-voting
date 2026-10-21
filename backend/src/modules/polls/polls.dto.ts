@@ -20,6 +20,7 @@ export const createPollDto = z.object({
   questions: z.array(questionDto).min(1, "At least one question is required"),
   allowAnonymous: z.boolean().optional(),
   expiresAt: z.coerce.date().optional(),
+  enableCustomBranding: z.boolean().optional(),
 });
 
 

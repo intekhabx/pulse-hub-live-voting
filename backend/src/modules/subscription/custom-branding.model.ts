@@ -7,6 +7,7 @@ export interface ICustomBranding extends Document {
   userId: mongoose.Types.ObjectId;
   brandName: string;            // "Acme Corp"
   brandImageUrl: string;              // "https://cdn.example.com/logo.png"
+  imageFileId: string;
   websiteUrl?: string;          // "https://acme.com"
   primaryColor: string;         // "#00F0FF"
   footerText: string;          // "© 2026 Acme Corp. All rights reserved."
@@ -23,6 +24,7 @@ const customBrandingSchema = new mongoose.Schema<ICustomBranding>({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+    unique: true,
   },
 
   brandName: {
@@ -32,6 +34,11 @@ const customBrandingSchema = new mongoose.Schema<ICustomBranding>({
   },
 
   brandImageUrl: {
+    type: String,
+    trim: true,
+  },
+
+  imageFileId: {
     type: String,
     trim: true,
   },

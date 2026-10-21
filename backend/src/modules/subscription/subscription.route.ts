@@ -3,6 +3,8 @@ import { isLoggedIn, requirePlan } from '../auth/auth.middleware';
 import * as controller from "./subscription.controller";
 import { razorpayWebhook } from './subscription.webhook';
 import upload from '../../middleware/multer.middleware';
+import validate from '../../middleware/validate.middleware';
+import { customBrandingDto } from './subscription.dto';
 
 const router = express.Router();
 
@@ -19,7 +21,7 @@ router.post("/webhook/razorpay", express.raw({type: "application/json"}), razorp
 
 
 // custom-branding
-router.post("/upload-custom-branding", isLoggedIn, requirePlan("PREMIUM"), upload.single("brandImage"), controller.addCustomBranding);
+router.post("/upload-custom-branding", isLoggedIn, requirePlan("PREMIUM"), upload.single("brandImage"), validate(customBrandingDto), controller.uploadCustomBranding);
 router.get("/custom-branding", isLoggedIn, requirePlan("PREMIUM"), controller.getCustomBrandingDetails);
 
 

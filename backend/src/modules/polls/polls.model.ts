@@ -64,6 +64,10 @@ const pollSchema = new mongoose.Schema({
     required: true,
     default: 0,
   },
+  enableCustomBranding: {
+    type: Boolean,
+    default: false,
+  },
 
 }, {timestamps: true});
 

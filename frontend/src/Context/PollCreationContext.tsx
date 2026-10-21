@@ -83,6 +83,9 @@ type PollCreationContextType = {
   questions: Question[];
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>;
 
+  enableCustomBranding: boolean;
+  setEnableCustomBranding: React.Dispatch<React.SetStateAction<boolean>>;
+
   isCreating: boolean;
   isSavingDraft: boolean;
 
@@ -131,6 +134,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
   const [questions, setQuestions] = useState<Question[]>([
     { questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }
   ]);
+  const [enableCustomBranding, setEnableCustomBranding] = useState(false);
 
   const [isCreating, setIsCreating] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -190,6 +194,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
     setExpiresAt("");
     setQuestions([{ questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }]);
     setErrors({});
+    setEnableCustomBranding(false);
   };
 
   const handleSubmit = async ({setActive}: {setActive: (s: string)=> void}) => {
@@ -207,6 +212,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
         allowAnonymous,
         expiresAt,
         questions: cleanedQuestions,
+        enableCustomBranding,
       });
       toast.success("Poll created successfully");
       resetForm();
@@ -237,6 +243,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
         allowAnonymous,
         expiresAt,
         questions: cleanedQuestions,
+        enableCustomBranding,
       });
       toast.success("Poll saved as draft");
       resetForm();
@@ -406,7 +413,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
 
   const valueObj = {
     title, setTitle, description, setDescription, allowAnonymous, setAllowAnonymous, expiresAt, setExpiresAt,
-    questions, setQuestions, isCreating, errors, setErrors, isSavingDraft, 
+    questions, setQuestions, enableCustomBranding, setEnableCustomBranding, isCreating, errors, setErrors, isSavingDraft, 
     handleSubmit, handleSaveAsDraft, handleCancel,
     addQuestion, removeQuestion, removeOption, addOption,
     totalQuestions, filledQuestions,

@@ -30,6 +30,12 @@ const subscriptionService = {
     return res;
   },
 
+  getCustomBrandingDetails: async () => {
+    const {data} = await api.get("/api/subscription/custom-branding");
+    return data;
+  },
+
+
   createSubscription: async(plan: "PRO" | "PREMIUM") => {
     const {data} = await api.post("/api/subscription/create", {plan});
     return data;

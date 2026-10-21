@@ -23,6 +23,7 @@ export interface ICreatePoll {
         }[];
     }[];
   allowAnonymous: boolean,
+  enableCustomBranding?: boolean,
 }
 
 export interface IUpdatePoll {
@@ -38,6 +39,7 @@ export interface IUpdatePoll {
         }[];
     }[];
   allowAnonymous?: boolean,
+  enableCustomBranding?: boolean,
 }
 
 

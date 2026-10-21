@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 interface ICustomBrandingProps {
   plan: "FREE" | "PRO" | "PREMIUM";
   initialData?: {
-    enabled?: boolean;
     brandName?: string;
     brandImage?: string;
     websiteUrl?: string;
@@ -18,7 +17,6 @@ interface ICustomBrandingProps {
 const PRESET_COLORS = ["#8B5CF6", "#EC4899", "#3B82F6", "#10B981", "#F59E0B", "#EF4444"];
 
 export default function CustomBranding({ plan, initialData, onSave }: ICustomBrandingProps) {
-  const [enabled, setEnabled] = useState(initialData?.enabled ?? true);
   const [brandName, setBrandName] = useState(initialData?.brandName || "");
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl || "");
   const [primaryColor, setPrimaryColor] = useState(initialData?.primaryColor || "#8B5CF6");
@@ -80,11 +78,30 @@ export default function CustomBranding({ plan, initialData, onSave }: ICustomBra
     }
   };
 
+
+  useEffect(() => {
+    async function getBrandingDetails(){
+      try {
+        const res = await subscriptionService.getCustomBrandingDetails();
+        console.log(res.data)
+        setBrandName(res.data.brandName);
+        setWebsiteUrl(res.data.websiteUrl);
+        setPrimaryColor(res.data.primaryColor);
+        setFooterText(res.data.footerText);
+        setPreviewUrl(res.data.brandImageUrl);
+      } 
+      catch (error: any) {
+        console.log(error.response.data.message)  
+      }
+    }
+    getBrandingDetails();
+  }, [])
+
   return (
     <section>
       <form onSubmit={handleSubmit} className="rounded-2xl border border-white/[0.07] bg-[#13131f] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
         
-        {/* Header with Enable Switch */}
+        {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-5">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 text-violet-400">
@@ -95,13 +112,6 @@ export default function CustomBranding({ plan, initialData, onSave }: ICustomBra
               <p className="mt-0.5 text-xs text-gray-400">Personalize your public polls with your organization's brand identity</p>
             </div>
           </div>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <span className="text-xs font-medium text-gray-300">{enabled ? "Branding Active" : "Branding Disabled"}</span>
-            <button type="button" role="switch" aria-checked={enabled} onClick={() => setEnabled(!enabled)} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${enabled ? "bg-violet-600" : "bg-gray-700"}`}>
-              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${enabled ? "translate-x-5" : "translate-x-0"}`} />
-            </button>
-          </label>
         </div>
 
         {/* Form Body */}

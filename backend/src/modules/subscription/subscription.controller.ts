@@ -95,6 +95,46 @@ const uploadImageFileOnImageKit = async (file: Express.Multer.File) => {
 }
 
 
+export const getPremiumUserCustomBrandingData = async (userId: string) => {
+  try {
+    // step:1 - find the customBranding data from the DB
+    const branding = await customBrandingModel.findOne({userId});
+    if(!branding){
+      throw ApiError.notFound("Custom Branding not found");
+    }
+
+    // step:2 - now optimise the image and convert size into square and webp
+    const optimizedUrl = imagekit.helper.buildSrc({
+      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+      src: branding.brandImageUrl.split("smartilixious")[1]!,
+      transformation: [ //this gives me a square image in webp
+        {
+          width: 400,
+          height: 400,
+          crop: "force",
+          quality: 85,
+          format: "webp",
+        },
+      ],
+    });
+
+    // step:3 - return the custombranding data with optimized image
+    return {
+      enabled: branding.enabled,
+      brandName: branding.brandName,
+      brandImageUrl: optimizedUrl,
+      footerText: branding.footerText,
+      websiteUrl: branding.websiteUrl,
+      primaryColor: branding.primaryColor,
+    }
+  } 
+  catch (error) {
+    throw error;
+  }
+}
+
+
+
 
 
 
@@ -161,45 +201,63 @@ export const exportAllPollCSV = asyncHandler(async(req: AuthRequest, res: Respon
 
 
 
-export const addCustomBranding = asyncHandler(async (req: AuthRequest, res: Response) => {
-  // step:1 - extract the text data from body
-  const {brandName, websiteUrl, primaryColor, footerText } = req.body;
+export const uploadCustomBranding = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - Extract text data from body
+  const { brandName, websiteUrl, primaryColor, footerText } = req.body;
+  const userId = req.user?.id.toString()!;
 
-  // step:2 - extract the image file
   const file = req.file;
-  if(!file){
-    throw ApiError.notFound("image file doesn't found")
+
+  // step:2 - Find existing branding in the DB
+  const existingBranding = await customBrandingModel.findOne({ userId });
+
+  let logoUrl = existingBranding?.brandImageUrl;
+  let imageFileId = existingBranding?.imageFileId;
+
+  // step:3 - Handle Image Upload if new file is provided
+  if (file) {
+    // Delete old image from ImageKit if it exists
+    if (existingBranding?.imageFileId) {
+      try {
+        await imagekit.files.delete(existingBranding.imageFileId);
+      } 
+      catch (error) {
+        console.error("Failed to delete old imagekit file:", error);
+      }
+    }
+
+    // Upload new image on ImageKit
+    const uploadResponse = await uploadImageFileOnImageKit(file);
+    logoUrl = uploadResponse.url;
+    imageFileId = uploadResponse.fileId;
   }
 
-  // step:3 - upload image file in the imagekit
-  const uploadResponse = await uploadImageFileOnImageKit(file);
+  // step:4 - Upsert (Update existing OR Create new if doesn't exist)
+  const updatedBranding = await customBrandingModel.findOneAndUpdate({ userId },
+    {
+      userId,
+      brandName,
+      logoUrl,
+      imageFileId,
+      websiteUrl,
+      primaryColor,
+      footerText,
+    },
+    { returnDocument: "after", upsert: true }
+  );
 
-  // step:4 - create a new customBrand
-  await customBrandingModel.create({
-    userId: req.user?.id,
-    brandName,
-    brandImageUrl: uploadResponse.url,
-    websiteUrl,
-    primaryColor,
-    footerText,
-  })
-
-  ApiResponse.ok(res, "Branding Updated Successfully");
-})
+  ApiResponse.ok(res, "Branding Updated Successfully", updatedBranding);
+});
 
 
 
 export const getCustomBrandingDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
-  // step:1 - find the latest active custom branding details
-  const branding = await customBrandingModel.findOne({userId: req.user?.id}).sort({createdAt: -1});
-  if(!branding){
-    throw ApiError.notFound("Custom Branding not found");
-  }
+  // step:1 - find the custom branding data of the user
+  const userId = req.user?.id.toString()!;
+  const brandingData = await getPremiumUserCustomBrandingData(userId);
 
-  // step:2 - now optimise the image size
-
-
-  ApiResponse.ok(res, "Branding fetched sucessfully", branding);
+  // step:2 - send response to the frontend
+  ApiResponse.ok(res, "Branding fetched sucessfully", brandingData);
 })
 
 

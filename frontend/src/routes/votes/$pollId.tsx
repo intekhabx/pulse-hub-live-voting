@@ -43,10 +43,10 @@ function RouteComponent() {
     async function getPollById(){
       try {
         const result = await pollService.getPollById(pollId);
-        setPollData(result.data);
-        if(result.data.isPublished){
+        setPollData(result.data.poll);
+        if(result.data?.poll.isPublished){
           const res = await pollService.getPublishedPollQuestionsAnalytics(pollId);
-          setPublishedPollQuestionsAnalytics(res.data);
+          setPublishedPollQuestionsAnalytics(res.data.poll);
         }
       } catch (err) {
         setPollNotFound(true);
@@ -248,7 +248,7 @@ function RouteComponent() {
                           />
                           <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
                           <span className="flex-1 text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
-                          {publishedPollQuestionsAnalytics.length > 0 && analyticsOption && (
+                          {publishedPollQuestionsAnalytics?.length > 0 && analyticsOption && (
                             <span
                               className={`ml-auto shrink-0 text-sm font-bold tabular-nums ${
                                 isSelected

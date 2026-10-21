@@ -16,6 +16,7 @@ import subscriptionModel from "../subscription/subscription.model";
 import agent from "../../agent/agent";
 import inputGuardrail from "../../agent/guardrails/input.guardrail";
 import callMainLLM from "../../agent/agent";
+import { getPremiumUserCustomBrandingData } from "../subscription/subscription.controller";
 
 
 
@@ -633,17 +634,22 @@ const getProAnalytics = async (pollId: mongoose.Types.ObjectId): Promise<IProAna
 
 export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
   // step:1 - extract poll details from body
-  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description,expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
 
   // step:2 - find the user to check that account is free, pro or premium
   const user = await userModel.findById(req.user?.id);
   if(!user) throw ApiError.unAuthorized("only authenticated user can create and update polls");
 
-  // step:2 - check the limit of poll and its question limit before creation
+  // step:3 - check the limit of poll and its question limit before creation
   checkQuestionLimit(user.plan, questions);
   await checkPollCreationLimit(user._id, user.plan);
 
-  // step:3 - now user can create poll so, create poll 
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && user.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - now user can create poll so, create poll 
   const poll = await pollModel.create({
     title,
     description,
@@ -652,19 +658,20 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     questions,
     createdBy: req.user?.id,
     status: "active",
+    enableCustomBranding: enableCustomBranding ? true : false,
   })
 
-  // step:4 - add poll is created in the recent activity
+  // step:5 - add poll is created in the recent activity
   const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
 
-  // step:5 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  // step:6 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
   const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
   if(expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), title, userId);
   }
 
-  // step:6 - send io response to the frontend
+  // step:7 - send io response to the frontend
   io.to(`user:${req.user?.id}`).emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfully", {pollId: poll._id});
@@ -674,7 +681,7 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
 
 export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Response)=> {
   // step:1 - extract poll details from body
-  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description,expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
 
   // step:2 - find the user to check that question should be created in plan limit
   const user = await userModel.findById(req.user?.id);
@@ -683,7 +690,12 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
   // step:3 - check the limit of question before creation
   checkQuestionLimit(user.plan, questions);
 
-  // step:4 - now the limit is under the plan so, create poll as draft
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && user.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - now the limit is under the plan so, create poll as draft
   const poll = await pollModel.create({
     title,
     description,
@@ -692,9 +704,10 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
     questions,
     createdBy: req.user?.id,
     status: "draft",
+    enableCustomBranding: enableCustomBranding ? true : false,
   })
 
-  // step:5 add poll is created in the recent activity
+  // step:6 - add poll is created in the recent activity
   const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
   
@@ -745,7 +758,7 @@ export const updatePollAsActive = asyncHandler(async(req: AuthRequest, res: Resp
 
 export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Response)=> {
   // step:1 - extract the edited data from body and pollId from params
-  const {title, description, expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
   const {pollId} = req?.params;
   const userId = req.user?.id.toString()!;
 
@@ -760,13 +773,19 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   // step:3 - check the limit of questions before updation
   checkQuestionLimit(req.user?.plan!, questions);
 
-  // step:4 - find the poll using the pollId and also poll is created by same user then update it
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && req.user?.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - find the poll using the pollId and also poll is created by same user then update it
   const poll = await pollModel.findOneAndUpdate({_id: pollId, createdBy: req?.user?.id}, {
     title,
     description,
     expiresAt,
     questions,
     allowAnonymous,
+    enableCustomBranding: enableCustomBranding ? true : false,
   }, {returnDocument: "after"}); //{new: true} is depriciated
 
   if(!poll){
@@ -884,7 +903,19 @@ export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
     throw ApiError.unAuthorized("You can't access drafted or private poll");
   }
 
-  ApiResponse.ok(res, "poll fetched successfully", poll);
+  // step:3 - check the poll has enabled customBranding or not
+  let customBranding = null;
+  if(poll.enableCustomBranding){
+    // check the poll owner has active premium plan or not
+    const owner = await userModel.findById(poll.createdBy);
+    if(!owner) throw ApiError.conflict("poll owner and custom branding doesn't exists");
+
+    if(owner.plan === "PREMIUM"){
+      customBranding = await getPremiumUserCustomBrandingData(owner._id.toString());
+    }
+  }
+
+  ApiResponse.ok(res, "poll fetched successfully", {poll, customBranding});
 })
 
 

@@ -5,13 +5,13 @@ import { api } from "./apiService"
 
 const pollService = {
 
-  async createPoll({title, description, expiresAt, questions, allowAnonymous}: ICreatePoll){
-    const {data} = await api.post('/api/polls/create-poll', {title, description, expiresAt, questions, allowAnonymous})
+  async createPoll({title, description, expiresAt, questions, allowAnonymous, enableCustomBranding}: ICreatePoll){
+    const {data} = await api.post('/api/polls/create-poll', {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding})
     return data;
   },
 
-  async createPollAsDraft({title, description, expiresAt, questions, allowAnonymous}: ICreatePoll){
-    const {data} = await api.post('/api/polls/create-poll-draft', {title, description, expiresAt, questions, allowAnonymous});
+  async createPollAsDraft({title, description, expiresAt, questions, allowAnonymous, enableCustomBranding}: ICreatePoll){
+    const {data} = await api.post('/api/polls/create-poll-draft', {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding});
     return data;
   },
 
@@ -20,8 +20,8 @@ const pollService = {
     return data;
   },
 
-  async updatePoll(pollId: string, {title, description, expiresAt, questions, allowAnonymous}: IUpdatePoll){
-    const {data} = await api.patch(`/api/polls/update-poll/${pollId}`, {title, description, expiresAt, questions, allowAnonymous});
+  async updatePoll(pollId: string, {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding}: IUpdatePoll){
+    const {data} = await api.patch(`/api/polls/update-poll/${pollId}`, {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding});
     return data;
   },
 

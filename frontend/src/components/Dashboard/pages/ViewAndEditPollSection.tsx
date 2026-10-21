@@ -9,6 +9,7 @@ import type { IQuestion } from "../assets/types";
 import { PollCreationContext } from "../../../Context/PollCreationContext";
 import EditPollPopup from "../EditPollPopup";
 import { getPollStatus } from "../../../utils/getPollStatus";
+import tokenStore from "../../../services/tokenStoreService";
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 500;
@@ -41,6 +42,7 @@ type PollFormState = {
   allowAnonymous: boolean;
   expiresAt: string; // datetime-local formatted
   questions: Question[];
+  enableCustomBranding?: boolean;
 };
 
 interface ViewAndEditSectionProps {
@@ -71,9 +73,14 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
   const [status, setStatus] = useState<"active" | "draft">("active");
   const [isOpenEditPollPopup, setIsOpenEditPollPopup] = useState(false);
 
+  const [enableCustomBranding, setEnableCustomBranding] = useState<boolean | undefined>(false);
+
   // Snapshot of the last-saved (or originally loaded) poll, used to discard
   // in-progress edits when the user hits Cancel.
   const [savedState, setSavedState] = useState<PollFormState | null>(null);
+
+  const {plan} = tokenStore.getUser();
+
 
   const inputCls =
     "w-full px-3.5 py-2.5 rounded-xl text-sm text-white bg-white/[0.03] border border-white/[0.08] outline-none focus:border-violet-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-violet-500/[0.08] transition-all placeholder-gray-600";
@@ -87,6 +94,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
     setExpiresAt(s.expiresAt);
     setQuestions(s.questions);
     setStatus(s.status);
+    setEnableCustomBranding(s?.enableCustomBranding);
   };
 
   useEffect(() => {
@@ -107,6 +115,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
             required: !!q.required,
             options: (q.options ?? []).map((o: any) => ({ _id: o._id, optionText: o.optionText })),
           })),
+          enableCustomBranding: poll?.enableCustomBranding ?? false,
         };
         setExpiresAtRaw(poll.expiresAt ?? "");
         applyState(loaded);
@@ -177,6 +186,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
         allowAnonymous,
         expiresAt,
         questions: cleanedQuestions,
+        enableCustomBranding,
       });
       const newSavedState: PollFormState = {
         title: title.trim(),
@@ -185,6 +195,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
         expiresAt,
         status,
         questions: cleanedQuestions,
+        enableCustomBranding,
       };
       setSavedState(newSavedState);
       applyState(newSavedState);
@@ -371,6 +382,32 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
           {/* Poll Details */}
           <div className="relative rounded-2xl border border-white/[0.07] bg-[#13131f] p-4 sm:p-6 space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
             <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+              <div>
+                {/* PREMIUM user can enableCustomBranding*/}
+                {isEditing && plan === "PREMIUM" && (
+                  <div className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-300">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3z" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">Apply Custom Branding</p>
+                        <p className="mt-0.5 text-xs text-gray-400">Show your custom logo and primary colors on this poll.</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enableCustomBranding}
+                      onClick={() => setEnableCustomBranding(!enableCustomBranding)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${enableCustomBranding ? "bg-violet-600" : "bg-gray-700"}`}
+                    >
+                      <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${enableCustomBranding ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                )}
+              </div>
             <div className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
