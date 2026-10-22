@@ -5,12 +5,12 @@ import { Document } from "mongoose";
 export interface ICustomBranding extends Document {
   enabled: boolean;
   userId: mongoose.Types.ObjectId;
-  brandName: string;            // "Acme Corp"
-  brandImageUrl: string;              // "https://cdn.example.com/logo.png"
+  brandName: string;
+  brandImageUrl: string;
   imageFileId: string;
-  websiteUrl?: string;          // "https://acme.com"
-  primaryColor: string;         // "#00F0FF"
-  footerText: string;          // "© 2026 Acme Corp. All rights reserved."
+  websiteUrl?: string;
+  primaryColor: string;
+  footerText: string;
 }
 
 

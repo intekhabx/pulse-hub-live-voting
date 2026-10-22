@@ -56,7 +56,14 @@ export const SettingContext = createContext<ContextType | null>(null);
 
 const SettingContextProvider = ({children}: {children: React.ReactNode}) => {
 
-  const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked } = tokenStore.getUser();
+  const storedUser = tokenStore.getUser();
+  const {
+    name = "",
+    email = "",
+    isPasswordExists = false,
+    isGoogleLinked = false,
+    isGithubLinked = false,
+  } = storedUser ?? {};
 
 
   const [showDeleteButton, setShowDeleteButton] = useState(false);

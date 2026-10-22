@@ -89,7 +89,8 @@ function PasswordRequirements({ password }: { password: string }) {
 
 export function SettingsSection() {
 
-  const { name, email, isPasswordExists, plan } = tokenStore.getUser();
+    const storedUser = tokenStore.getUser();
+    const { name, email, isPasswordExists, plan } = storedUser;
 
 
   const settingContext = useContext(SettingContext);

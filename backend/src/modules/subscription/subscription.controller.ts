@@ -237,7 +237,7 @@ export const uploadCustomBranding = asyncHandler(async (req: AuthRequest, res: R
     {
       userId,
       brandName,
-      logoUrl,
+      brandImageUrl: logoUrl,
       imageFileId,
       websiteUrl,
       primaryColor,

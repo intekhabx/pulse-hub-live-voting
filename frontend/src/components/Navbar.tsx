@@ -13,7 +13,18 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
   if(!context){
     throw new Error("dark and toggleTheme must be used within ContextApiProvider");
   }
-  const {dark, toggleTheme, user} = context;
+  const {dark, toggleTheme, user, customBranding, brandingLoading} = context;
+
+  const brandColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(customBranding?.primaryColor ?? "")
+    ? customBranding?.primaryColor
+    : undefined;
+  const brandWebsite = /^https?:\/\//i.test(customBranding?.websiteUrl ?? "")
+    ? customBranding?.websiteUrl
+    : undefined;
+  const brandImage = /^https?:\/\//i.test(customBranding?.brandImageUrl ?? "")
+    ? customBranding?.brandImageUrl
+    : undefined;
+  const showBrandLogo = !!(brandImage || customBranding?.brandName);
   
 
   const [scrolled, setScrolled] = useState(false);
@@ -30,6 +41,7 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
 
   return (
     <nav
+      style={brandColor ? ({ "--brand": brandColor } as React.CSSProperties) : undefined}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
           ? dark
@@ -41,30 +53,75 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
 
         {/* ── Logo ── */}
-        <a href="/" className="flex items-center gap-3 group select-none">
-          <div className="relative w-9 h-9 flex-shrink-0">
-            <div className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md group-hover:opacity-60 transition-opacity duration-300" />
-            <div className="relative w-9 h-9 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M3 12h3l3-8 4 16 3-8 3 4h2"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+        <div className={`transition-opacity duration-300 ${brandingLoading ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+          {showBrandLogo ? (
+            <div className="flex items-center gap-2.5">
+              <a
+                href={brandWebsite}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 group select-none"
+              >
+                {brandImage && (
+                  <div className="relative w-9 h-9 flex-shrink-0">
+                    <div className={`absolute inset-0 rounded-[10px] opacity-30 blur-md group-hover:opacity-60 transition-opacity duration-300 ${brandColor ? "bg-(--brand)" : "bg-violet-500"}`} />
+                    <img
+                      src={brandImage}
+                      alt={customBranding?.brandName || "Brand logo"}
+                      width={36}
+                      height={36}
+                      className="relative w-9 h-9 rounded-[10px] object-cover"
+                    />
+                  </div>
+                )}
+                {customBranding?.brandName && (
+                  <span
+                    className={`${brandImage ? "hidden md:flex" : "flex"} max-w-[14rem] truncate text-[1.35rem] font-black tracking-tight transition-colors duration-300 ${dark ? "text-white" : "text-gray-900"}`}
+                    style={{ fontFamily: "'Syne', sans-serif" }}
+                  >
+                    {customBranding.brandName}
+                  </span>
+                )}
+              </a>
+              <a
+                href="/"
+                aria-label="Powered by PulseHub"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/[0.08] bg-[#11121a] px-2.5 py-1 text-[11px] font-semibold leading-none text-gray-400 transition-colors hover:border-violet-400/30"
+              >
+                <span>via</span>
+                <svg className="h-3 w-3 text-violet-400" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M9.3 1.5 3.8 8h3.5l-.6 6.5L12.2 8H8.7l.6-6.5Z" />
+                </svg>
+                <span className="text-violet-400">PulseHub</span>
+              </a>
             </div>
-          </div>
-          <span
-            className={`hidden md:flex text-[1.35rem] font-black tracking-tight transition-colors duration-300 ${
-              dark ? "text-white" : "text-gray-900"
-            }`}
-            style={{ fontFamily: "'Syne', sans-serif" }}
-          >
-            Pulse<span className="text-violet-500">Hub</span>
-          </span>
-        </a>
+          ) : (
+            <a href="/" className="flex items-center gap-3 group select-none">
+              <div className="relative w-9 h-9 flex-shrink-0">
+                <div className="absolute inset-0 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-30 blur-md group-hover:opacity-60 transition-opacity duration-300" />
+                <div className="relative w-9 h-9 rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M3 12h3l3-8 4 16 3-8 3 4h2"
+                      stroke="white"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <span
+                className={`hidden md:flex text-[1.35rem] font-black tracking-tight transition-colors duration-300 ${
+                  dark ? "text-white" : "text-gray-900"
+                }`}
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                Pulse<span className="text-violet-500">Hub</span>
+              </span>
+            </a>
+          )}
+        </div>
 
         {/* ── Desktop Nav Links ── */}
         {!hideNavigationLinks && (
@@ -129,8 +186,8 @@ export default function Navbar({ hideNavigationLinks = false }: NavbarProps) {
           {/* Get Started */}
           <Link
             to={user ? "/dashboard" : "/register"}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white ${brandColor ? "bg-(--brand) hover:brightness-110" : "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50"} transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0`}
+            style={{ fontFamily: "'DM Sans', sans-serif", ...(brandColor ? { boxShadow: `0 10px 24px -10px ${brandColor}` } : {}) }}
           >
             {user ? "Go to Dashboard" : "Get Started"}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
