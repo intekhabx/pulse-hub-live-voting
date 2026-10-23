@@ -230,7 +230,7 @@ export function Register() {
               >
                 Join{" "}
                 <span className="text-violet-500 font-semibold">PulseHub</span>{" "}
-                — it's free forever
+                - Your voice matters
               </p>
             </div>
   
@@ -419,9 +419,9 @@ export function Register() {
                   </div>
                   <span className={`text-xs leading-relaxed ${dark ? "text-gray-500" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     I agree to PulseHub's{" "}
-                    <a href="#" className="text-violet-500 hover:text-violet-400 font-medium">Terms of Service</a>{" "}
+                    <a href="/terms-and-conditions" className="text-violet-500 hover:text-violet-400 font-medium">Terms of Service</a>{" "}
                     and{" "}
-                    <a href="#" className="text-violet-500 hover:text-violet-400 font-medium">Privacy Policy</a>
+                    <a href="/privacy-policy" className="text-violet-500 hover:text-violet-400 font-medium">Privacy Policy</a>
                   </span>
                 </label>
   

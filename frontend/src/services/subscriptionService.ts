@@ -1,6 +1,7 @@
 import { api } from "./apiService";
 
 
+
 const subscriptionService = {
 
   getUserPlanDetails: async (plan: "FREE" | "PRO" | "PREMIUM") => {
@@ -19,6 +20,21 @@ const subscriptionService = {
     });
     return res;
   },
+
+  uploadCustomBranding: async (formData: FormData) => {
+    const res = await api.post("/api/subscription/upload-custom-branding", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    })
+    return res;
+  },
+
+  getCustomBrandingDetails: async () => {
+    const {data} = await api.get("/api/subscription/custom-branding");
+    return data;
+  },
+
 
   createSubscription: async(plan: "PRO" | "PREMIUM") => {
     const {data} = await api.post("/api/subscription/create", {plan});

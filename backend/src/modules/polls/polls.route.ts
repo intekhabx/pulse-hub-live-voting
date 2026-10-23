@@ -3,7 +3,7 @@ import { isLoggedIn } from "../auth/auth.middleware";
 import * as controller from './polls.controller';
 import { checkAuthenticatedAndAnonymousUser } from "./polls.middleware";
 import validate from "../../middleware/validate.middleware";
-import { callAiAgentDto, createPollDto, updatePollDto } from "./polls.dto";
+import { callAiAgentDto, createPollDto, updateActivePollBasicDetailsDto, updatePollDto } from "./polls.dto";
 
 const router = express.Router();
 
@@ -15,6 +15,8 @@ router.post('/create-poll-draft', isLoggedIn, validate(createPollDto), controlle
 router.patch('/update-poll-as-active/:pollId', isLoggedIn, controller.updatePollAsActive);
 
 router.patch('/update-poll/:pollId', isLoggedIn, validate(updatePollDto), controller.editAndUpdatePoll);
+
+router.patch('/update-active-poll/:pollId', isLoggedIn, validate(updateActivePollBasicDetailsDto), controller.updateActivePollBasicDetails);
 
 router.get('/get-mypolls', isLoggedIn, controller.getMyPolls);
 

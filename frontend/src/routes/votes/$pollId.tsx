@@ -17,7 +17,6 @@ interface IPollInputData {
   optionId: string;
 }
 
-
 export const Route = createFileRoute('/votes/$pollId')({
   component: RouteComponent,
 })
@@ -29,7 +28,7 @@ function RouteComponent() {
   if (!context) {
     throw new Error("Vote page must be used within ContextApiProvider");
   }
-  const { dark, socketRef } = context;
+  const { dark, socketRef, customBranding, setCustomBranding, setBrandingLoading } = context;
 
   const [loading, setLoading] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
@@ -38,23 +37,61 @@ function RouteComponent() {
   const [publishedPollQuestionsAnalytics, setPublishedPollQuestionsAnalytics] = useState<IPublishedPollQuestionsAnalytics[]>([]);
   const [pollNotFound, setPollNotFound] = useState(false);
 
+  // only use values that are safe/valid, each field works on its own
+  const brandColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(customBranding?.primaryColor ?? "")
+    ? customBranding?.primaryColor
+    : undefined;
+  const brandWebsite = /^https?:\/\//i.test(customBranding?.websiteUrl ?? "")
+    ? customBranding?.websiteUrl
+    : undefined;
+  const brandImage = /^https?:\/\//i.test(customBranding?.brandImageUrl ?? "")
+    ? customBranding?.brandImageUrl
+    : undefined;
+
 
   useEffect(() => {
+    let isActive = true;
+
     async function getPollById(){
       try {
         const result = await pollService.getPollById(pollId);
-        setPollData(result.data);
-        if(result.data.isPublished){
+        if (!isActive) return;
+        // console.log(result.data);
+        setPollData(result.data.poll);
+        if(result.data?.customBranding?.enabled){
+          setCustomBranding(result.data.customBranding);
+        }
+        if(result.data?.poll.isPublished){
           const res = await pollService.getPublishedPollQuestionsAnalytics(pollId);
-          setPublishedPollQuestionsAnalytics(res.data);
+          if (isActive) {
+            setPublishedPollQuestionsAnalytics(res.data);
+          }
         }
       } catch (err) {
-        setPollNotFound(true);
+        if (isActive) {
+          setPollNotFound(true);
+        }
       } finally {
-        setPollLoading(false);
+        if (isActive) {
+          setPollLoading(false);
+          setBrandingLoading(false);
+        }
       }
     }
     getPollById();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  // Navbar vote page ke bahar hai, isliye page chhodte hi branding clear karo
+  useEffect(() => {
+    setBrandingLoading(true);
+    return () => {
+      setBrandingLoading(false);
+      setCustomBranding(null);
+    };
   }, []);
 
 
@@ -139,7 +176,10 @@ function RouteComponent() {
   }, [])
 
   return (
-    <div className={`relative min-h-screen overflow-hidden px-4 pb-8 pt-28 transition-colors duration-300 sm:px-6 sm:pb-12 sm:pt-32 ${dark ? "bg-[#0a0a12] text-white" : "bg-[#f7f6ff] text-gray-950"}`}>
+    <div
+      style={brandColor ? ({ "--brand": brandColor } as React.CSSProperties) : undefined}
+      className={`relative min-h-screen overflow-hidden px-4 pb-8 pt-28 transition-colors duration-300 sm:px-6 sm:pb-12 sm:pt-32 ${dark ? "bg-[#0a0a12] text-white" : "bg-[#f7f6ff] text-gray-950"}`}
+    >
       {/* Background treatment shared with the landing page */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className={`absolute left-1/2 top-[-15rem] h-[36rem] w-[36rem] -translate-x-1/2 rounded-full blur-[120px] ${dark ? "bg-violet-600/15" : "bg-violet-400/20"}`} />
@@ -155,16 +195,41 @@ function RouteComponent() {
       </div>
 
       <main className="relative z-10 mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-center gap-3 sm:mb-8">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-              <path d="M3 12h3l3-8 4 16 3-8 3 4h2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+        {customBranding && (brandImage || customBranding.brandName) ? (
+          // Custom branding (paid users): shows only the fields that are set
+          <a
+            href={brandWebsite}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-6 flex items-center justify-center gap-3 sm:mb-8"
+          >
+            {brandImage && (
+              <img
+                src={brandImage}
+                alt={customBranding.brandName || "Brand logo"}
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-[10px] object-cover"
+              />
+            )}
+            {customBranding.brandName && (
+              <span className={`text-lg font-black tracking-tight ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+                {customBranding.brandName}
+              </span>
+            )}
+          </a>
+        ) : (
+          <div className="mb-6 flex items-center justify-center gap-3 sm:mb-8">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+                <path d="M3 12h3l3-8 4 16 3-8 3 4h2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span className={`text-lg font-black tracking-tight ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
+              Pulse<span className="text-violet-500">Hub</span>
+            </span>
           </div>
-          <span className={`text-lg font-black tracking-tight ${dark ? "text-white" : "text-gray-950"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
-            Pulse<span className="text-violet-500">Hub</span>
-          </span>
-        </div>
+        )}
 
         {pollLoading ? (
           <Loader label="Loading poll…" className="min-h-[28rem]" />
@@ -185,7 +250,7 @@ function RouteComponent() {
           </div>
         ) : (
           <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:rounded-3xl ${dark ? "border-white/[0.08] bg-[#13131f]/90 shadow-black/40" : "border-violet-100 bg-white/90 shadow-violet-200/60"}`}>
-            <div className={`border-b bg-gradient-to-r from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08] px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
+            <div className={`border-b bg-gradient-to-r ${brandColor ? "from-(--brand)/10 via-transparent to-(--brand)/5" : "from-violet-500/[0.08] via-transparent to-fuchsia-500/[0.08]"} px-6 py-6 sm:px-8 sm:py-8 ${dark ? "border-white/[0.07]" : "border-violet-100"}`}>
               <div className={`mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 <StatusBadge expiresAt={pollData ? pollData?.expiresAt : ""} pollCreationStatus={pollData ? pollData.status : "active"} />
               </div>
@@ -204,10 +269,10 @@ function RouteComponent() {
               {pollData?.questions?.map((ques, idx) => (
                 <div
                   key={ques._id}
-                  className={`rounded-2xl border p-5 transition-colors duration-200 sm:p-6 ${dark ? "border-white/[0.07] bg-white/[0.025] hover:border-violet-500/20" : "border-gray-200 bg-[#fcfbff] hover:border-violet-300 hover:shadow-sm"}`}
+                  className={`rounded-2xl border p-5 transition-colors duration-200 sm:p-6 ${dark ? `border-white/[0.07] bg-white/[0.025] ${brandColor ? "hover:border-(--brand)/50" : "hover:border-violet-500/20"}` : `border-gray-200 bg-[#fcfbff] ${brandColor ? "hover:border-(--brand)/50" : "hover:border-violet-300"} hover:shadow-sm`}`}
                 >
                   <div className="mb-5 flex items-start gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-xs font-bold text-violet-300" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${brandColor ? "bg-(--brand)/15 text-(--brand)" : "bg-violet-500/15 text-violet-300"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       {idx + 1}
                     </span>
                     <h2 className={`pt-0.5 text-base font-bold leading-relaxed sm:text-lg ${dark ? "text-gray-100" : "text-gray-900"}`} style={{ fontFamily: "'Syne', sans-serif" }}>
@@ -230,11 +295,19 @@ function RouteComponent() {
                           className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
                             isSelected
                               ? dark
-                                ? "border-emerald-500/60 bg-emerald-500/[0.10] text-white"
-                                : "border-emerald-500/70 bg-emerald-50 text-gray-900"
+                                ? brandColor
+                                  ? "border-(--brand)/60 bg-(--brand)/10 text-white"
+                                  : "border-emerald-500/60 bg-emerald-500/[0.10] text-white"
+                                : brandColor
+                                  ? "border-(--brand)/70 bg-(--brand)/10 text-gray-900"
+                                  : "border-emerald-500/70 bg-emerald-50 text-gray-900"
                               : dark
-                                ? "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-violet-500/40 hover:bg-violet-500/[0.06] hover:text-white"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-violet-300 hover:bg-violet-50/50 hover:text-gray-950"
+                                ? brandColor
+                                  ? "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-(--brand)/50 hover:bg-(--brand)/10 hover:text-white"
+                                  : "border-white/[0.07] bg-white/[0.025] text-gray-300 hover:border-violet-500/40 hover:bg-violet-500/[0.06] hover:text-white"
+                                : brandColor
+                                  ? "border-gray-200 bg-white text-gray-700 hover:border-(--brand)/50 hover:bg-(--brand)/10 hover:text-gray-950"
+                                  : "border-gray-200 bg-white text-gray-700 hover:border-violet-300 hover:bg-violet-50/50 hover:text-gray-950"
                           }`}
                         >
                           <input
@@ -246,13 +319,15 @@ function RouteComponent() {
                             checked= {isSelected}
                             onChange={()=> handleSelect(ques._id, opt._id)}
                           />
-                          <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors peer-checked:border-emerald-400 peer-checked:bg-emerald-500 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
+                          <span className={`relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors ${brandColor ? "peer-checked:border-(--brand) peer-checked:bg-(--brand)" : "peer-checked:border-emerald-400 peer-checked:bg-emerald-500"} after:h-1.5 after:w-1.5 after:rounded-full after:bg-white after:opacity-0 after:transition-opacity peer-checked:after:opacity-100 ${dark ? "border-slate-500" : "border-slate-400"}`} />
                           <span className="flex-1 text-sm font-medium" style={{ fontFamily: "'DM Sans', sans-serif" }}>{opt.optionText}</span>
-                          {publishedPollQuestionsAnalytics.length > 0 && analyticsOption && (
+                          {publishedPollQuestionsAnalytics?.length > 0 && analyticsOption && (
                             <span
                               className={`ml-auto shrink-0 text-sm font-bold tabular-nums ${
                                 isSelected
-                                  ? "text-emerald-400"
+                                  ? brandColor
+                                    ? "text-(--brand)"
+                                    : "text-emerald-400"
                                   : dark
                                     ? "text-gray-500"
                                     : "text-gray-400"
@@ -275,7 +350,10 @@ function RouteComponent() {
                   type="submit"
                   disabled={loading}
                   className="group mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    ...(brandColor ? { background: brandColor, boxShadow: `0 10px 24px -10px ${brandColor}` } : {}),
+                  }}
                 >
                   {loading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" /><path d="M12 3a9 9 0 019 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg> Submitting…</> : "Submit Vote"}
                   {!loading && (
@@ -288,9 +366,31 @@ function RouteComponent() {
             </form>
           </div>
         )}
-        <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          Your response is securely recorded by PulseHub.
-        </p>
+        {customBranding ? (
+          <>
+            {customBranding.footerText && (
+              <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                {customBranding.footerText}
+              </p>
+            )}
+            {brandWebsite && (
+              <p className={`text-center text-xs ${customBranding.footerText ? "mt-1" : "mt-5"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                <a
+                  href={brandWebsite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`font-bold transition-opacity duration-200 hover:opacity-80 ${brandColor ? "text-(--brand)" : "text-gray-500"}`}
+                >
+                  {brandWebsite.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "")}
+                </a>
+              </p>
+            )}
+          </>
+        ) : (
+          <p className={`mt-5 text-center text-xs ${dark ? "text-gray-600" : "text-gray-500"}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            Your response is securely recorded by PulseHub.
+          </p>
+        )}
       </main>
     </div>
   )

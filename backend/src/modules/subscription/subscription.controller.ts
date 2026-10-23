@@ -1,3 +1,4 @@
+import fs from "fs";
 import type {Response} from "express";
 import { SUBSCRIPTION_PLAN_DETAILS } from "../../constants/subscription-plan-details";
 import type { AuthRequest, IPollAnalytics } from "../../types/index.types";
@@ -10,6 +11,8 @@ import instance from "../../config/razorpay.config";
 import subscriptionModel from "./subscription.model";
 import { subscriptionCancellationQueue } from "../../config/bullmq.config";
 import userModel from "../auth/auth.model";
+import customBrandingModel from "./custom-branding.model";
+import imagekit from "../../config/imagekit.config";
 
 
 
@@ -62,6 +65,74 @@ const convertPollAnalyticsIntoCSV = (pollAnalytics: IPollAnalytics, title: strin
       row.map(escapeCSV).join(",")), 
   ].join("\n");
 }
+
+
+const uploadImageFileOnImageKit = async (file: Express.Multer.File) => {
+  try {
+    //step:1 - create a stream of the file
+    const streamFile = fs.createReadStream(file.path);
+
+    //step:2 - upload the image file on imagekit
+    const uploadResponse = await imagekit.files.upload({
+      file: streamFile,
+      fileName: file.filename,
+      folder: "/pulsehub",
+    })
+
+    //step:3 - after uploading delete the local file stored on server
+    fs.unlinkSync(file.path)
+
+    return uploadResponse;
+  } 
+  catch (error: unknown) {
+    // if some error happens also delete file from server
+    if(file.path && fs.existsSync(file.path)){
+      fs.unlinkSync(file.path);
+    }
+    console.log(error);
+    throw new Error("Something went wrong while uploading on imagekit");
+  }
+}
+
+
+export const getPremiumUserCustomBrandingData = async (userId: string) => {
+  try {
+    // step:1 - find the customBranding data from the DB
+    const branding = await customBrandingModel.findOne({userId});
+    if(!branding){
+      throw ApiError.notFound("Custom Branding not found");
+    }
+
+    // step:2 - now optimise the image and convert size into square and webp
+    const optimizedUrl = imagekit.helper.buildSrc({
+      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+      src: branding.brandImageUrl.split("smartilixious")[1]!,
+      transformation: [ //this gives me a square image in webp
+        {
+          width: 400,
+          height: 400,
+          crop: "force",
+          quality: 85,
+          format: "webp",
+        },
+      ],
+    });
+
+    // step:3 - return the custombranding data with optimized image
+    return {
+      enabled: branding.enabled,
+      brandName: branding.brandName,
+      brandImageUrl: optimizedUrl,
+      footerText: branding.footerText,
+      websiteUrl: branding.websiteUrl,
+      primaryColor: branding.primaryColor,
+    }
+  } 
+  catch (error) {
+    throw error;
+  }
+}
+
 
 
 
@@ -126,6 +197,67 @@ export const exportAllPollCSV = asyncHandler(async(req: AuthRequest, res: Respon
     res.setHeader("Content-Type", "text/csv; charset=utf-8"); 
     res.setHeader( "Content-Disposition", `attachment; filename="${req.user?.id}-user-polls.csv"` ); 
     res.status(200).send(finalCSV); //here we directly send blob data not json
+})
+
+
+
+export const uploadCustomBranding = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - Extract text data from body
+  const { brandName, websiteUrl, primaryColor, footerText } = req.body;
+  const userId = req.user?.id.toString()!;
+
+  const file = req.file;
+
+  // step:2 - Find existing branding in the DB
+  const existingBranding = await customBrandingModel.findOne({ userId });
+
+  let logoUrl = existingBranding?.brandImageUrl;
+  let imageFileId = existingBranding?.imageFileId;
+
+  // step:3 - Handle Image Upload if new file is provided
+  if (file) {
+    // Delete old image from ImageKit if it exists
+    if (existingBranding?.imageFileId) {
+      try {
+        await imagekit.files.delete(existingBranding.imageFileId);
+      } 
+      catch (error) {
+        console.error("Failed to delete old imagekit file:", error);
+      }
+    }
+
+    // Upload new image on ImageKit
+    const uploadResponse = await uploadImageFileOnImageKit(file);
+    logoUrl = uploadResponse.url;
+    imageFileId = uploadResponse.fileId;
+  }
+
+  // step:4 - Upsert (Update existing OR Create new if doesn't exist)
+  const updatedBranding = await customBrandingModel.findOneAndUpdate({ userId },
+    {
+      userId,
+      brandName,
+      brandImageUrl: logoUrl,
+      imageFileId,
+      websiteUrl,
+      primaryColor,
+      footerText,
+    },
+    { returnDocument: "after", upsert: true }
+  );
+
+  ApiResponse.ok(res, "Branding Updated Successfully", updatedBranding);
+});
+
+
+
+export const getCustomBrandingDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - find the custom branding data of the user
+  const userId = req.user?.id.toString()!;
+  const brandingData = await getPremiumUserCustomBrandingData(userId);
+
+  // step:2 - send response to the frontend
+  ApiResponse.ok(res, "Branding fetched sucessfully", brandingData);
 })
 
 

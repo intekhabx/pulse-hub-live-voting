@@ -1,8 +1,11 @@
 import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import { useContext } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { DataContext } from '../Context/ContextApi'
 
 function RootLayout() {
+  const context = useContext(DataContext)
   const pathname = useRouterState({
     select: s => s.location.pathname,
   })
@@ -17,7 +20,7 @@ function RootLayout() {
 
       <Outlet />
 
-      {!hideLayout && <Footer />}
+      {!hideLayout && !(isVotePage && (context?.brandingLoading || context?.customBranding)) && <Footer />}
     </>
   )
 }

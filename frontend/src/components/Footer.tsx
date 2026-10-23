@@ -3,23 +3,20 @@ import { DataContext } from "../Context/ContextApi";
 
 const LINKS = {
   Product: [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Pricing", href: "#pricing" },
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Pricing", href: "/#pricing" },
   ],
 
   Company: [
-    { label: "About Us", href: "#about-us" },
-    { label: "Contact Us", href: "#contact" },
+    { label: "About Us", href: "/#about-us" },
+    { label: "Contact Us", href: "/#contact" },
   ],
 
   Legal: [
     { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms & Conditions", href: "/terms-and-conditions" },
-    {
-      label: "Refund & Cancellation",
-      href: "/refund-cancellation",
-    },
+    { label: "Refund & Cancellation", href: "/refund-cancellation" },
   ],
 };
 

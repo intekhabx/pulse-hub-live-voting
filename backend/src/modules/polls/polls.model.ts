@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { maxLength } from "zod";
 
 
 const optionSchema = new mongoose.Schema({
@@ -64,6 +63,10 @@ const pollSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0,
+  },
+  enableCustomBranding: {
+    type: Boolean,
+    default: false,
   },
 
 }, {timestamps: true});

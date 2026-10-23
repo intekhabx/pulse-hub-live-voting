@@ -6,7 +6,7 @@ import ApiResponse from "../../utils/api-response.utils";
 import ApiError from "../../utils/api-error.utils";
 import responseModel from "../response/response.model";
 import { io } from "../../server";
-import mongoose from "mongoose";
+import mongoose, { type Date } from "mongoose";
 import redis from "../../config/redis.config";
 import { pollExpiryQueue } from "../../config/bullmq.config";
 import userModel from "../auth/auth.model";
@@ -16,6 +16,7 @@ import subscriptionModel from "../subscription/subscription.model";
 import agent from "../../agent/agent";
 import inputGuardrail from "../../agent/guardrails/input.guardrail";
 import callMainLLM from "../../agent/agent";
+import { getPremiumUserCustomBrandingData } from "../subscription/subscription.controller";
 
 
 
@@ -221,7 +222,7 @@ const updateRedisPollAnalyticsData = async(key: string, answers:{questionId: str
   }
 
   // step:3 - recalculate overall percentages
-  analyticsData.authecticatedPercentage = ((analyticsData.authenticatedUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
+  analyticsData.authenticatedPercentage = ((analyticsData.authenticatedUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
   analyticsData.anonymousPercentage = ((analyticsData.anonymousUserCount / analyticsData.totalResponseCount) * 100).toFixed(2);
 
   //step:4 - updating the answer
@@ -633,17 +634,22 @@ const getProAnalytics = async (pollId: mongoose.Types.ObjectId): Promise<IProAna
 
 export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=>{
   // step:1 - extract poll details from body
-  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description,expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
 
   // step:2 - find the user to check that account is free, pro or premium
   const user = await userModel.findById(req.user?.id);
   if(!user) throw ApiError.unAuthorized("only authenticated user can create and update polls");
 
-  // step:2 - check the limit of poll and its question limit before creation
+  // step:3 - check the limit of poll and its question limit before creation
   checkQuestionLimit(user.plan, questions);
   await checkPollCreationLimit(user._id, user.plan);
 
-  // step:3 - now user can create poll so, create poll 
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && user.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - now user can create poll so, create poll 
   const poll = await pollModel.create({
     title,
     description,
@@ -652,19 +658,20 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
     questions,
     createdBy: req.user?.id,
     status: "active",
+    enableCustomBranding: enableCustomBranding ? true : false,
   })
 
-  // step:4 - add poll is created in the recent activity
+  // step:5 - add poll is created in the recent activity
   const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
 
-  // step:5 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
+  // step:6 - now add expiry in bullmq queue so whenever poll is expired; worker should add expiry in recent activiry
   const expiryDelayInMiliSecond = new Date(expiresAt).getTime() - Date.now();
   if(expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), title, userId);
   }
 
-  // step:6 - send io response to the frontend
+  // step:7 - send io response to the frontend
   io.to(`user:${req.user?.id}`).emit("server:poll-created");
 
   ApiResponse.created(res, "poll created successfully", {pollId: poll._id});
@@ -674,7 +681,7 @@ export const createPolls = asyncHandler(async (req: AuthRequest, res: Response)=
 
 export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Response)=> {
   // step:1 - extract poll details from body
-  const {title, description,expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description,expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
 
   // step:2 - find the user to check that question should be created in plan limit
   const user = await userModel.findById(req.user?.id);
@@ -683,7 +690,12 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
   // step:3 - check the limit of question before creation
   checkQuestionLimit(user.plan, questions);
 
-  // step:4 - now the limit is under the plan so, create poll as draft
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && user.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - now the limit is under the plan so, create poll as draft
   const poll = await pollModel.create({
     title,
     description,
@@ -692,9 +704,10 @@ export const createPollAsDraft = asyncHandler(async(req: AuthRequest, res: Respo
     questions,
     createdBy: req.user?.id,
     status: "draft",
+    enableCustomBranding: enableCustomBranding ? true : false,
   })
 
-  // step:5 add poll is created in the recent activity
+  // step:6 - add poll is created in the recent activity
   const userId = user._id.toString();
   await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: title, message: "New Poll Created", icon: "create"});
   
@@ -745,31 +758,95 @@ export const updatePollAsActive = asyncHandler(async(req: AuthRequest, res: Resp
 
 export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Response)=> {
   // step:1 - extract the edited data from body and pollId from params
-  const {title, description, expiresAt, questions, allowAnonymous} = req.body;
+  const {title, description, expiresAt, questions, allowAnonymous, enableCustomBranding} = req.body;
   const {pollId} = req?.params;
+  const userId = req.user?.id.toString()!;
 
-  // step:2 - find the user to check that question should be created and updated in plan limit
-  const user = await userModel.findById(req.user?.id);
-  if(!user) throw ApiError.unAuthorized("only authenticated user can update polls");
+  // step:2 - only draft poll can be edited
+  const existingPoll = await pollModel.findOne({_id: pollId, createdBy: userId});
+  if(!existingPoll) throw ApiError.notFound("poll does not found or exists");
+
+  if(existingPoll.status !== "draft"){
+    throw ApiError.badRequest("Only draft poll can be edited");
+  }
 
   // step:3 - check the limit of questions before updation
-  checkQuestionLimit(user.plan, questions);
+  checkQuestionLimit(req.user?.plan!, questions);
 
-  // step:4 - find the poll using the pollId and also poll is created by same user then update it
+  // step:4 - if the user plan is premium then only he can enableCustomBranding
+  if(enableCustomBranding && req.user?.plan !== "PREMIUM"){
+    throw ApiError.unAuthorized("Only Premium user can enable custom branding");
+  }
+
+  // step:5 - find the poll using the pollId and also poll is created by same user then update it
   const poll = await pollModel.findOneAndUpdate({_id: pollId, createdBy: req?.user?.id}, {
     title,
     description,
     expiresAt,
     questions,
     allowAnonymous,
+    enableCustomBranding: enableCustomBranding ? true : false,
   }, {returnDocument: "after"}); //{new: true} is depriciated
 
   if(!poll){
     throw ApiError.notFound("poll doesn't found or exists");
   }
 
+  //? doen't need these steps because only draft poll can be edited
+  // // step:5 - (update) remove the old pollAnalytics in the redis
+  // await redis.del(`poll:${pollId}`); 
+
+  // // step:6 - find and remove the old pollExpiry job in the bullmq queue
+  // const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
+  // if(job){
+  //   await job.remove();
+  // }
+
+  // step:7 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
+  const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
+  if(expiresAt && expiryDelayInMiliSecond > 0){
+    await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
+  }
+
+  // step:8 - add pollUpdated in recent_activity in REDIS
+  await addRecentActivity(userId, {pollId: poll._id.toString(), pollTitle: poll.title, message: "Poll Edited & Updated", icon: "update"});
+
+  ApiResponse.ok(res, "poll updated successfully");
+})
+
+
+
+export const updateActivePollBasicDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+   // step:1 - extract the edited data from body and pollId from params
+  const {title, description, expiresAt, allowAnonymous} = req.body;
+  const {pollId} = req?.params;
+  const userId = req.user?.id.toString()!;
+
+  // step:2 - find the poll and should be created by same user
+  const poll = await pollModel.findOne({_id: pollId, createdBy: userId});
+  if(!poll){
+    throw ApiError.notFound("poll doesn't found or exists");
+  }
+
+  // step:3 - check poll is expired or not, only acitve poll basic details can be updated
+  if(poll.expiresAt){
+    const expiry = new Date(poll.expiresAt).getTime();
+    const nowTime = Date.now();
+
+    if(expiry < nowTime){
+      throw ApiError.badRequest("Only active poll can be edited");
+    }
+  }
+
+  // step:4 - update the poll
+  poll.title = title;
+  poll.description = description;
+  poll.allowAnonymous = allowAnonymous;
+  poll.expiresAt = expiresAt;
+  await poll.save();
+
   // step:5 - (update) remove the old pollAnalytics in the redis
-  await redis.del(`poll:${pollId}`);
+  await redis.del(`poll:${pollId}`); 
 
   // step:6 - find and remove the old pollExpiry job in the bullmq queue
   const job = await pollExpiryQueue.getJob(`poll-expiry-${pollId}`);
@@ -778,7 +855,6 @@ export const editAndUpdatePoll = asyncHandler(async (req: AuthRequest, res:Respo
   }
 
   // step:7 - now, add new pollExpiry job in the bullmq queue if poll is expired in future
-  const userId = req?.user?.id.toString()!;
   const expiryDelayInMiliSecond = expiresAt && new Date(expiresAt).getTime() - Date.now();
   if(expiresAt && expiryDelayInMiliSecond > 0){
     await addPollExpiryInBullMqQueue(expiryDelayInMiliSecond, poll._id.toString(), poll.title, userId);
@@ -827,7 +903,19 @@ export const getPollById = asyncHandler(async(req: Request, res: Response)=>{
     throw ApiError.unAuthorized("You can't access drafted or private poll");
   }
 
-  ApiResponse.ok(res, "poll fetched successfully", poll);
+  // step:3 - check the poll has enabled customBranding or not
+  let customBranding = null;
+  if(poll.enableCustomBranding){
+    // check the poll owner has active premium plan or not
+    const owner = await userModel.findById(poll.createdBy);
+    if(!owner) throw ApiError.conflict("poll owner and custom branding doesn't exists");
+
+    if(owner.plan === "PREMIUM"){
+      customBranding = await getPremiumUserCustomBrandingData(owner._id.toString());
+    }
+  }
+
+  ApiResponse.ok(res, "poll fetched successfully", {poll, customBranding});
 })
 
 
@@ -1141,18 +1229,28 @@ export const getPublishedPollQuestionsAnalytics = asyncHandler(async(req: Reques
 
 // *****Ai Agent Controller*****
 export const callAIAgentToResponse = asyncHandler(async (req: AuthRequest, res: Response)=> {
+  // step:0 - create a abort controller for every requst of the user, so when user canecl their request we can stop
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  res.on("close", ()=> {
+    if(!res.writableEnded){
+      controller.abort();
+    }
+  })
+
   // step:1 - extract the prompt from body and userId
   const {prompt} = req.body;
   const userId = req.user?.id.toString()!;
 
   // step:2 - check the input is right or not by inputGuardrail
-  const isAllowed = await inputGuardrail(prompt, userId);
+  const isAllowed = await inputGuardrail(prompt, userId, signal);
   if(isAllowed.decision === "reject"){
     throw ApiError.forbidden(isAllowed.reason);
   }
 
   // step:3 - now the input is right then call the main llm to get the response
-  const result = await callMainLLM(prompt, userId);
+  const result = await callMainLLM(prompt, userId, signal);
   // console.dir(result, {depth: null});
 
   ApiResponse.ok(res, "Ai Agent response received", result);

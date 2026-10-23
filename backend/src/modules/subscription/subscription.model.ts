@@ -18,7 +18,7 @@ const subscriptionSchema = new mongoose.Schema<ISubscription>({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-    unique: true,
+    // unique: true,
     // index: true,
   },
   plan: {

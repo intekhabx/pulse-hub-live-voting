@@ -1,13 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useContext, useEffect } from "react";
 import tokenStore from "../../../services/tokenStoreService";
-import authService from "../../../services/authService";
-import toast from "react-hot-toast";
 import DeleteButton from "../DeleteButton";
-import { useNavigate } from "@tanstack/react-router";
 import PlanDetails from "../PlanDetails";
-import subscriptionService from "../../../services/subscriptionService";
 import { handleUpgrade } from "../../../utils/load-razorpay";
 import PaymentSuccessModal from "../PaymentSuccessModal";
+import CustomBranding from "../CustomBranding";
+import { SettingContext } from "../../../Context/SettingContext";
+import toast from "react-hot-toast";
 
 
 const inputCls =
@@ -89,40 +88,26 @@ function PasswordRequirements({ password }: { password: string }) {
 }
 
 export function SettingsSection() {
-  const { name, email, isPasswordExists, isGoogleLinked, isGithubLinked, plan } = tokenStore.getUser();
-  const [showDeleteButton, setShowDeleteButton] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
-  const [purchasedPlan, setPurchasedPlan] = useState<"PRO" | "PREMIUM">("PRO");
+    const storedUser = tokenStore.getUser();
+    const { name, email, isPasswordExists, plan } = storedUser;
 
-  const navigate = useNavigate();
 
-  const [userDetails, setUserDetails] = useState({
-    name: name,
-    email: email,
-  });
+  const settingContext = useContext(SettingContext);
+  if(!settingContext){
+    throw new Error("SettingSection must be rendered inside PollCreationContextProvider");
+  }
 
-  const [userPassword, setUserPassword] = useState({
-    newPassword: "",
-    currentPassword: "",
-  });
+  const {
+    showDeleteButton, setShowDeleteButton, isDeleting, isLoading, setIsLoading, 
+    showPaymentSuccess, setShowPaymentSuccess, purchasedPlan, setPurchasedPlan,
+    userDetails, userPassword, connections, setConnections,
+    isSavingProfile, isSavingPassword, connectingProvider,
+    handleChange, updateUserDetails, handlePasswordChange, updateUserPassword,
+    persistConnectionState, handleConnectionClick, handleExportCSV, handleDeleteUserAccount,
+  } = settingContext;
 
-  const [connections, setConnections] = useState({
-    google: isGoogleLinked,
-    github: isGithubLinked,
-  });
 
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [connectingProvider, setConnectingProvider] = useState<"google" | "github" | null>(null);
-
-  // const sessions = [
-  //   { device: "MacBook Pro · Chrome", location: "Kolkata, IN", current: true },
-  //   { device: "iPhone 15 · Safari", location: "Kolkata, IN", current: false },
-  //   { device: "Windows PC · Edge", location: "Mumbai, IN", current: false },
-  // ];
 
   const initials = name
     ?.split(" ")
@@ -131,15 +116,6 @@ export function SettingsSection() {
     .join("")
     .toUpperCase();
 
-  // Persist the connect/disconnect result into the stored user object too
-  // (tokenStore.getUser() reads from localStorage), so a page refresh keeps
-  // showing the correct Connect/Disconnect button instead of resetting to
-  // whatever was there at login time.
-  const persistConnectionState = (provider: "google" | "github", linked: boolean) => {
-    const currentUser = tokenStore.getUser();
-    const patch = provider === "google" ? { isGoogleLinked: linked } : { isGithubLinked: linked };
-    tokenStore.setUser({ ...currentUser, ...patch });
-  };
 
   // Handle redirect back from the OAuth connect flow — the connect *callback*
   // on the backend still does a plain redirect to
@@ -167,163 +143,7 @@ export function SettingsSection() {
   }, []);
 
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setUserDetails((prev) => ({ ...prev, [name]: value }));
-  };
 
-  const updateUserDetails = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsSavingProfile(true);
-    try {
-      await authService.updateUserDetails(userDetails.name, userDetails.email);
-      const currentUser = tokenStore.getUser();
-      tokenStore.setUser({ ...currentUser, name: userDetails.name, email: userDetails.email });
-      toast.success("Your details updated successfully");
-    } 
-    catch (error: any) {
-      console.log(error.response);
-      toast.error(error?.response?.data.message || "Failed to update your details");
-    } 
-    finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setUserPassword((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const validateNewPassword = (password: string): string | null => {
-    if (password.length < 8) return "Password must be at least 8 characters";
-    if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter";
-    if (!/\d/.test(password)) return "Password must contain at least one number";
-    if (!/[^a-zA-Z0-9]/.test(password)) return "Password must contain at least one special character";
-    return null;
-  };
-
-  const updateUserPassword = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!userPassword.newPassword) {
-      toast.error("Please enter a new password");
-      return;
-    }
-    if (isPasswordExists && !userPassword.currentPassword) {
-      toast.error("Please enter your current password");
-      return;
-    }
-
-    const passwordError = validateNewPassword(userPassword.newPassword);
-    if (passwordError) {
-      toast.error(passwordError);
-      return;
-    }
-
-    setIsSavingPassword(true);
-    try {
-      await authService.updateUserPassword(userPassword.newPassword, userPassword.currentPassword);
-
-      // If the user didn't have a password before, they do now.
-      if (!isPasswordExists) {
-        const currentUser = tokenStore.getUser();
-        tokenStore.setUser({ ...currentUser, isPasswordExists: true });
-      }
-
-      toast.success(isPasswordExists ? "Your password has been updated" : "Password added successfully");
-      setUserPassword({ newPassword: "", currentPassword: "" });
-    } 
-    catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data.message || "Password updation failed");
-    } 
-    finally {
-      setIsSavingPassword(false);
-    }
-  };
-
-  const handleConnectionClick = async (key: "google" | "github") => {
-    if (connections[key]) {
-      // Disconnect
-      const ok = confirm(`Are you want to disconnect ${key} account?`);
-      if (!ok) return;
-
-      try {
-        const res = await authService.disconnectGoogleAndGithub(key);
-        setConnections((prev) => ({ ...prev, [key]: false }));
-        persistConnectionState(key, false);
-        toast.success(res?.data?.message || `${key} account is disconnected successfully`);
-      } 
-      catch (error: any) {
-        console.error(error?.response);
-        toast.error(error?.response?.data.message || "Disconnect isn't available yet.");
-      }
-      return;
-    }
-
-    setConnectingProvider(key);
-    try {
-      // These are authenticated GET requests — the access token goes along
-      // via the normal axios interceptor, so the backend can identify the
-      // logged-in user and return the correct authorization URL as JSON.
-      const url = await authService.getGoogleAndGithubConnectUrl(key);
-      window.location.href = url;
-    } 
-    catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || `Couldn't start ${key === "google" ? "Google" : "GitHub"} connection`);
-      setConnectingProvider(null);
-    }
-  };
-
-
-  // handle export CSV
-  const handleExportCSV = async()=> {
-    setIsLoading(true);
-    try {
-      const res = await subscriptionService.exportAllPollCSV();
-  
-      const url = window.URL.createObjectURL(res.data);
-  
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "my-polls.csv";
-      link.click();
-    
-      window.URL.revokeObjectURL(url);
-      toast.success("Every Poll's data expored");
-    } 
-    catch (error: any) {
-      console.log(error);
-      console.log(error.response)
-      toast.error(error?.response?.data.message || "Something went wrong while exporting")
-    }
-    finally{
-      setIsLoading(false);
-    }
-  }
-
-
-  // user account deletion
-  const handleDeleteUserAccount = async ()=> {
-    setIsDeleting(true);
-    try {
-      await authService.deleteUserAccount();
-      toast.success("Account deleted successfully");
-      navigate({
-        to: "/"
-      })
-    }  
-    catch (error: any) {
-      console.log(error);
-      toast.error(error?.response.data.message || "Someting went wrong while deleting");
-    }
-    finally{
-      setIsDeleting(false);
-    }
-  }
 
   return (
     <div className="w-full">
@@ -463,6 +283,11 @@ export function SettingsSection() {
           </div>
         </form>
 
+        {/* Custom Branding */}
+        <div className="lg:col-span-2 borde">
+          <CustomBranding plan={plan} />
+        </div>
+
         {/* Connected Accounts */}
         <div className={cardCls}>
           <SectionHeader
@@ -579,6 +404,11 @@ export function SettingsSection() {
                 </button>
               )}
             </div>
+            <p className="mt-2 text-xs leading-5 text-gray-400 flex items-center justify-center gap-2">
+              <span className="text-xl">&bull; </span>
+              <p>Export all your poll data as a CSV file,
+              including all polls you’ve created and their associated data.</p>
+            </p>
 
             {/* Free plan ke liye helpful info */}
             {plan !== "PRO" && plan !== "PREMIUM" && (
@@ -602,51 +432,13 @@ export function SettingsSection() {
           />
         }
 
+        
+
         {/* Plan / Billing */}
         <div className="lg:col-span-2 borde">
             <PlanDetails plan={plan} />
         </div>
 
-        {/* Active Sessions — full width */}
-        {/* <div className={`${cardCls} lg:col-span-2`}>
-          <SectionHeader
-            title="Active Sessions"
-            desc="Devices currently signed in to your account"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
-                <path d="M8 20h8M12 16v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            }
-          />
-          <div className="space-y-2">
-            {sessions.map((s) => (
-              <div
-                key={s.device}
-                className="flex items-center justify-between gap-4 rounded-xl bg-white/[0.02] border border-white/[0.06] px-4 py-3"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      s.current ? "bg-emerald-400" : "bg-gray-600"
-                    }`}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-200 truncate" style={fontBody}>
-                      {s.device} {s.current && <span className="text-emerald-400 text-xs">· this device</span>}
-                    </p>
-                    <p className="text-xs text-gray-500" style={fontBody}>{s.location}</p>
-                  </div>
-                </div>
-                {!s.current && (
-                  <button className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors flex-shrink-0" style={fontBody}>
-                    Revoke
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div> */}
 
         {/* Danger Zone — full width */}
         <div className="lg:col-span-2 rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] p-6">

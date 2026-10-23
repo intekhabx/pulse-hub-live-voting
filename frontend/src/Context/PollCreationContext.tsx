@@ -1,4 +1,4 @@
-import { createContext, useState, type PropsWithChildren } from "react";
+import React, { createContext, useEffect, useRef, useState, type FormEvent, type PropsWithChildren, type RefObject } from "react";
 import toast from "react-hot-toast";
 import pollService from "../services/pollService";
 
@@ -21,6 +21,52 @@ type Errors = {
 };
 
 
+// AiAgent types***
+type RequireInputSchema = {
+  message: string;
+  question: string;
+  options: string[];
+};
+
+type FinalOutputSchema = {
+  title: string;
+  description: string;
+  expiresAt: string;
+  allowAnonymous: boolean;
+  questions: {
+    questionText: string;
+    required: boolean;
+    options: {
+      optionText: string;
+    }[];
+  }[];
+  responseMessage: string;
+};
+
+type AIResponseData =
+    { type: "require-input"; input: RequireInputSchema }
+  | { type: "final-response"; output: FinalOutputSchema };
+
+type Message = {
+  id: number;
+  role: "ai" | "user";
+  text: string;
+  options?: string[];
+  error?: boolean;
+};
+
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: 0,
+    role: "ai",
+    text: "Hi! What should your poll be about? Describe your idea, and I'll help you build the form.",
+  },
+];
+
+
+
+
+
 type PollCreationContextType = {
   title: string;
   setTitle: React.Dispatch<React.SetStateAction<string>>;
@@ -36,6 +82,9 @@ type PollCreationContextType = {
 
   questions: Question[];
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>;
+
+  enableCustomBranding: boolean;
+  setEnableCustomBranding: React.Dispatch<React.SetStateAction<boolean>>;
 
   isCreating: boolean;
   isSavingDraft: boolean;
@@ -54,6 +103,19 @@ type PollCreationContextType = {
 
   totalQuestions: number;
   filledQuestions: number;
+
+  // AiAgent***
+  messages: Message[];
+  typing: boolean;
+
+  input: string;
+  setInput: React.Dispatch<React.SetStateAction<string>>;
+
+  listRef: RefObject<HTMLDivElement | null>;
+
+  callAiAgent: (e: FormEvent<HTMLFormElement> | null, userInput: string, onApplied?: ()=> void)=> void;
+
+  resetChat: ()=> void;
 }
 
 
@@ -72,6 +134,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
   const [questions, setQuestions] = useState<Question[]>([
     { questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }
   ]);
+  const [enableCustomBranding, setEnableCustomBranding] = useState(false);
 
   const [isCreating, setIsCreating] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -131,6 +194,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
     setExpiresAt("");
     setQuestions([{ questionText: "", required: false, options: [{ optionText: "" }, { optionText: "" }] }]);
     setErrors({});
+    setEnableCustomBranding(false);
   };
 
   const handleSubmit = async ({setActive}: {setActive: (s: string)=> void}) => {
@@ -148,6 +212,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
         allowAnonymous,
         expiresAt,
         questions: cleanedQuestions,
+        enableCustomBranding,
       });
       toast.success("Poll created successfully");
       resetForm();
@@ -178,6 +243,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
         allowAnonymous,
         expiresAt,
         questions: cleanedQuestions,
+        enableCustomBranding,
       });
       toast.success("Poll saved as draft");
       resetForm();
@@ -185,7 +251,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
     } 
     catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Something went wrong while saving the draft");
+      toast.error(error.response?.data?.message || error.message || "Something went wrong while saving the draft");
     } 
     finally {
       setIsSavingDraft(false);
@@ -213,12 +279,147 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
     setQuestions(q => q.map((qu, i) => (i === qi ? { ...qu, options: qu.options.filter((_, j) => j !== oi) } : qu)));
 
 
+
+  // ***AiAgent Context Code***
+
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [typing, setTyping] = useState(false);
+  const [input, setInput] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages, typing, open]);
+
+
+  // function that add messages in chat history
+  const addMessage = (message: Message) => {
+    setMessages((prev) => [...prev, message]);
+  };
+
+
+  // function that apply in ai Agent output response data into form
+  const applyAgentResponseIntoForm = (data: FinalOutputSchema) => {
+    setTitle(data.title);
+    setDescription(data.description);
+    setAllowAnonymous(data.allowAnonymous);
+    setExpiresAt(data.expiresAt);
+    setQuestions(
+      data.questions.map((question) => ({
+        questionText: question.questionText,
+        required: question.required,
+        options: question.options.map((option) => ({
+          optionText: option.optionText,
+        })),
+      }))
+    );
+    // setError as empty
+    setErrors({});
+  };
+
+
+  // functiont that call the llm agent to get response
+  const controllerRef = useRef<AbortController | null>(null);
+
+  const callAiAgent = async (e: FormEvent<HTMLFormElement> | null, userInput: string, onApplied?: ()=> void) => {
+    e?.preventDefault();
+
+    // step:1 - if current request is on going and user send request then that is canecl request
+    // If request is running, cancel it
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+      return;
+    }
+
+    // step:2- sanitize the input 
+    const prompt = userInput.trim();
+    if (!prompt) {
+      toast.error("Please enter a message.");
+      return;
+    }
+
+    //step:3 - add user msg in the chat history
+    addMessage({id: Date.now(), role: "user", text: prompt });
+
+    // creating a abort controller ofr every request
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
+    setInput("");
+    setTyping(true);
+
+    try {
+      // step:4 - call the ai agent to get response and also pass the signal so, user can canecl request anytime
+      const res = await pollService.generatePollWithAI(prompt, controller.signal);
+      const data: AIResponseData = res.data;
+      console.log(data);
+
+      // step:5a - if ai agnet need more input
+      if (data.type === "require-input") {
+        addMessage({
+          id: Date.now() + 1,
+          role: "ai",
+          text: `${data.input.message}\n${data.input.question}`,
+          options: data.input.options,
+        });
+        return;
+      }
+
+      // step:5b - apply ai agent poll_creation output response into form
+      applyAgentResponseIntoForm(data.output);
+
+      // step:6 - add Ai response to the chat history
+      addMessage({ id: Date.now() + 1, role: "ai", text: data.output.responseMessage });
+
+      // after onApplied close the form in small screen
+      onApplied?.();
+    } 
+    catch (error: unknown) {
+
+      // Cancellation is expected, not an application error
+      if (controller.signal.aborted) {
+        console.log("AI request cancelled");
+        return;
+      }
+
+      const apiError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+
+      const msg = apiError.response?.data?.message || apiError.message || "Something went wrong while generating the poll.";
+      addMessage({ id: Date.now() + 1, role: "ai", text: msg, error: true });
+      toast.error("AI couldn't build the poll.");
+    }
+    finally {
+      if(controllerRef.current === controller){
+        setTyping(false);
+        controllerRef.current = null;
+      }
+    }
+  };
+
+  // function that reset the chat
+  const resetChat = () => {
+    setMessages(INITIAL_MESSAGES);
+    setTyping(false);
+    setInput("");
+  };
+
+
+
   const valueObj = {
     title, setTitle, description, setDescription, allowAnonymous, setAllowAnonymous, expiresAt, setExpiresAt,
-    questions, setQuestions, isCreating, errors, setErrors, isSavingDraft, 
+    questions, setQuestions, enableCustomBranding, setEnableCustomBranding, isCreating, errors, setErrors, isSavingDraft, 
     handleSubmit, handleSaveAsDraft, handleCancel,
     addQuestion, removeQuestion, removeOption, addOption,
     totalQuestions, filledQuestions,
+    // ai agent***
+    messages, typing, input, setInput, listRef,
+    callAiAgent, resetChat,
   }
 
   return (

@@ -4,7 +4,7 @@ import redis from "../../config/redis.config";
 
 export async function getRedisChatHistory(key: string) {
   // ["{role: "user", constent: "create a poll'}", "{role: "assistant", content: {title: "someitng"...}"]
-  const storedMessages = await redis.lrange(key, -10, -1); //-10, -1 means latest 10 data, ||  0, -1 means all data
+  const storedMessages = await redis.lrange(key, -20, -1); //-20, -1 means latest 20 data, ||  0, -1 means all data
   return storedMessages.map((msg) => JSON.parse(msg));
 }
 
