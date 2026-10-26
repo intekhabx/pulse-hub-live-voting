@@ -265,7 +265,7 @@ const SettingContextProvider = ({children}: {children: React.ReactNode}) => {
     }  
     catch (error: any) {
       console.log(error);
-      toast.error(error?.response.data.message || "Someting went wrong while deleting");
+      toast.error(error?.response?.data?.message || "Someting went wrong while deleting");
     }
     finally{
       setIsDeleting(false);

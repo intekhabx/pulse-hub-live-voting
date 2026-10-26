@@ -90,7 +90,7 @@ function PasswordRequirements({ password }: { password: string }) {
 export function SettingsSection() {
 
     const storedUser = tokenStore.getUser();
-    const { name, email, isPasswordExists, plan } = storedUser;
+    const { name, email, isPasswordExists, plan } = storedUser ? storedUser : {};
 
 
   const settingContext = useContext(SettingContext);
@@ -404,11 +404,11 @@ export function SettingsSection() {
                 </button>
               )}
             </div>
-            <p className="mt-2 text-xs leading-5 text-gray-400 flex items-center justify-center gap-2">
+            <div className="mt-2 text-xs leading-5 text-gray-400 flex items-center justify-center gap-2">
               <span className="text-xl">&bull; </span>
               <p>Export all your poll data as a CSV file,
               including all polls you’ve created and their associated data.</p>
-            </p>
+            </div>
 
             {/* Free plan ke liye helpful info */}
             {plan !== "PRO" && plan !== "PREMIUM" && (

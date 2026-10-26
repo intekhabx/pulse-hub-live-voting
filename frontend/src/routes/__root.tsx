@@ -3,6 +3,7 @@ import { useContext } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { DataContext } from '../Context/ContextApi'
+import SettingContextProvider from '../Context/SettingContext'
 
 function RootLayout() {
   const context = useContext(DataContext)
@@ -16,11 +17,13 @@ function RootLayout() {
 
   return (
     <>
-      {!hideLayout && <Navbar hideNavigationLinks={isVotePage} />}
+      <SettingContextProvider>
+        {!hideLayout && <Navbar hideNavigationLinks={isVotePage} />}
 
-      <Outlet />
+        <Outlet />
 
-      {!hideLayout && !(isVotePage && (context?.brandingLoading || context?.customBranding)) && <Footer />}
+        {!hideLayout && !(isVotePage && (context?.brandingLoading || context?.customBranding)) && <Footer />}
+      </SettingContextProvider>
     </>
   )
 }

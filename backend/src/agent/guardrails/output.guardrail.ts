@@ -1,3 +1,5 @@
+// ! we are not using output guardrails
+
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createAgent, toolStrategy } from "langchain";
 import z from "zod";

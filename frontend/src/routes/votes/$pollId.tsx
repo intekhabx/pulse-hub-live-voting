@@ -58,7 +58,7 @@ function RouteComponent() {
         if (!isActive) return;
         // console.log(result.data);
         setPollData(result.data.poll);
-        if(result.data?.customBranding?.enabled){
+        if(result.data?.customBranding){
           setCustomBranding(result.data.customBranding);
         }
         if(result.data?.poll.isPublished){

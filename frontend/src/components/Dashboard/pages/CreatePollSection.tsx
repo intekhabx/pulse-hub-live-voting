@@ -71,7 +71,7 @@ export function CreatePollSection({ setActive }: { setActive: (s: string) => voi
   };
 
   return (
-    <div className="w-full max-w-[1100px] mx-auto px-4 sm:px-0 pb-6">
+    <div className="w-full max-w-[1100px] mx-auto pb-6">
       <div className="flex gap-6 items-start justify-center">
 
         {/* Form column */}

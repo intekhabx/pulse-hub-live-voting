@@ -86,7 +86,7 @@ export function ManualPollCreation({ setActive }: { setActive: (s: string) => vo
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-semibold text-gray-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>Description (optional)</label>
-            <span className="text-[11px] text-gray-600 tabular-nums" style={{ fontFamily: "'DM Sans', sans-serif" }}>{description.length}/{DESCRIPTION_MAX}</span>
+            <span className="text-[11px] text-gray-600 tabular-nums" style={{ fontFamily: "'DM Sans', sans-serif" }}>{description?.length}/{DESCRIPTION_MAX}</span>
           </div>
           <textarea
             value={description}
@@ -239,7 +239,7 @@ export function ManualPollCreation({ setActive }: { setActive: (s: string) => vo
                     />
                     Required
                   </label>
-                  {questions.length > 1 && (
+                  {questions?.length > 1 && (
                     <button
                       onClick={() => removeQuestion(qi)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors flex-shrink-0"

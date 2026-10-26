@@ -317,7 +317,7 @@ export function ViewAndEditSection({ pollId, setActive }: ViewAndEditSectionProp
 
   return (
     <>
-      <div className="w-full max-w-2xl mx-auto px-4 sm:px-0 pb-6">
+      <div className="w-full max-w-2xl mx-auto pb-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button

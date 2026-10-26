@@ -5,7 +5,6 @@ import ContextApiProvider from './Context/ContextApi.tsx'
 import { Toaster } from 'react-hot-toast'
 import PollContextProvider from './Context/PollContext.tsx'
 import PollCreationContextProvider from './Context/PollCreationContext.tsx'
-import SettingContextProvider from './Context/SettingContext.tsx'
 
 
 createRoot(document.getElementById('root')!).render(
@@ -13,10 +12,10 @@ createRoot(document.getElementById('root')!).render(
     <ContextApiProvider>
       <PollContextProvider>
         <PollCreationContextProvider>
-          <SettingContextProvider>
+          {/* <SettingContextProvider> // ! we are adding settingContextProvider in the __root.tsx file, so we can use  tanstack router method "useNavigate()" inside the settingSection */}
             <App />
             <Toaster />
-          </SettingContextProvider>
+          {/* </SettingContextProvider> */}
         </PollCreationContextProvider>
       </PollContextProvider>
     </ContextApiProvider>

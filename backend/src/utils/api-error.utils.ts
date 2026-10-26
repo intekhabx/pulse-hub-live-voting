@@ -25,6 +25,10 @@ class ApiError extends Error {
     return new ApiError(409, message);
   }
 
+  public static paymentRequired(message = "PAYMENT REQUIRED"){
+    return new ApiError(402, message);
+  }
+
   public static internalServerError(message = "INTERNAL SERVER ERROR"){
     return new ApiError(500, message);
   }

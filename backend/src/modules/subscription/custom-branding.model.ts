@@ -3,7 +3,6 @@ import { Document } from "mongoose";
 
 
 export interface ICustomBranding extends Document {
-  enabled: boolean;
   userId: mongoose.Types.ObjectId;
   brandName: string;
   brandImageUrl: string;
@@ -15,11 +14,6 @@ export interface ICustomBranding extends Document {
 
 
 const customBrandingSchema = new mongoose.Schema<ICustomBranding>({
-  enabled: {
-    type: Boolean,
-    default: true,
-  },
-
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

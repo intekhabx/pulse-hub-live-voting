@@ -41,6 +41,8 @@ router.get("/get-published-poll-analytics/:pollId", controller.getPublishedPollQ
 // agent routes
 router.post("/agent", isLoggedIn, validate(callAiAgentDto), controller.callAIAgentToResponse );
 
+router.delete("/reset", isLoggedIn, controller.resetAgentChat);
+
 
 export default router;
   

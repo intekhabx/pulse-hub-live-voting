@@ -2,14 +2,14 @@ export const SUBSCRIPTION_PLAN_DETAILS = {
   FREE: {
     price: 0,
 
-    maxPolls: 5,
-    maxActivePolls: 5,
+    maxPolls: 3,
+    maxActivePolls: 3,
     maxQuestionsPerPoll: 5,
     maxResponsesPerPoll: 100,
+    maxAiCalls: 3,
 
     advancedAnalytics: false,
     csvExport: false,
-    removeBranding: false,
     customBranding: false,
     prioritySupport: false,
   },
@@ -21,10 +21,10 @@ export const SUBSCRIPTION_PLAN_DETAILS = {
     maxActivePolls: 50,
     maxQuestionsPerPoll: 25,
     maxResponsesPerPoll: 2500,
+    maxAiCalls: 49,
 
     advancedAnalytics: true,
     csvExport: true,
-    removeBranding: true,
     customBranding: false,
     prioritySupport: false,
   },
@@ -36,10 +36,10 @@ export const SUBSCRIPTION_PLAN_DETAILS = {
     maxActivePolls: Infinity,
     maxQuestionsPerPoll: Infinity,
     maxResponsesPerPoll: Infinity,
+    maxAiCalls: 199,
 
     advancedAnalytics: true,
     csvExport: true,
-    removeBranding: true,
     customBranding: true,
     prioritySupport: true,
   },
