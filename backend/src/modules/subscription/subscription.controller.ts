@@ -95,6 +95,16 @@ const uploadImageFileOnImageKit = async (file: Express.Multer.File) => {
 }
 
 
+export const deleteImageFileOnImageKit = async(fileId: string): Promise<void> => {
+  try {
+    await imagekit.files.delete(fileId);
+  } 
+  catch (error) {
+    console.error("Failed to delete old imagekit file:", error);
+  }
+}
+
+
 export const getPremiumUserCustomBrandingData = async (userId: string) => {
   try {
     // step:1 - find the customBranding data from the DB
@@ -120,7 +130,6 @@ export const getPremiumUserCustomBrandingData = async (userId: string) => {
 
     // step:3 - return the custombranding data with optimized image
     return {
-      enabled: branding.enabled,
       brandName: branding.brandName,
       brandImageUrl: optimizedUrl,
       footerText: branding.footerText,
@@ -218,12 +227,7 @@ export const uploadCustomBranding = asyncHandler(async (req: AuthRequest, res: R
   if (file) {
     // Delete old image from ImageKit if it exists
     if (existingBranding?.imageFileId) {
-      try {
-        await imagekit.files.delete(existingBranding.imageFileId);
-      } 
-      catch (error) {
-        console.error("Failed to delete old imagekit file:", error);
-      }
+      await deleteImageFileOnImageKit(existingBranding.imageFileId);
     }
 
     // Upload new image on ImageKit

@@ -70,7 +70,8 @@ api.interceptors.response.use(
             })
             .then((refreshResponse) => {
 
-              console.log('📩 Refresh response:', refreshResponse.data);
+              console.log('📩 Refresh response received');
+              // console.log('📩 Refresh response:', refreshResponse.data);
 
               const newToken = refreshResponse.data?.data?.accessToken;
 

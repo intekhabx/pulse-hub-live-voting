@@ -51,6 +51,7 @@ export interface IPlanDetails {
   maxQuestionsPerPoll: number | string,
   maxResponsesPerPoll: number | string,
 
+  maxAiCalls: number,
   advancedAnalytics: boolean,
   csvExport: boolean,
   removeBranding: boolean,

@@ -355,7 +355,7 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
       // step:4 - call the ai agent to get response and also pass the signal so, user can canecl request anytime
       const res = await pollService.generatePollWithAI(prompt, controller.signal);
       const data: AIResponseData = res.data;
-      console.log(data);
+      // console.log(data);
 
       // step:5a - if ai agnet need more input
       if (data.type === "require-input") {
@@ -403,7 +403,9 @@ const PollCreationContextProvider = ({ children }: PropsWithChildren) => {
   };
 
   // function that reset the chat
-  const resetChat = () => {
+  const resetChat = async () => {
+    await pollService.resetAgentChat();
+    console.log("done")
     setMessages(INITIAL_MESSAGES);
     setTyping(false);
     setInput("");

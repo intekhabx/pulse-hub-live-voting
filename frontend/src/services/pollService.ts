@@ -84,7 +84,12 @@ const pollService = {
   async generatePollWithAI(prompt: string, signal: AbortSignal){
     const {data} = await api.post("/api/polls/agent", {prompt}, {signal});
     return data;
-  }
+  },
+
+  async resetAgentChat(){
+    const res = await api.delete("/api/polls/reset");
+    return res;
+  },
   
 }
 

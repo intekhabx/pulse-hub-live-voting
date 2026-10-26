@@ -120,7 +120,7 @@ function PlanDetails({plan}: PlanDetailsProps) {
           </div>
 
           {/* ==================== PLAN LIMITS ==================== */}
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
               {
                 label: "Polls",
@@ -138,6 +138,10 @@ function PlanDetails({plan}: PlanDetailsProps) {
                 label: "Responses / Poll",
                 value: planDetailsData?.maxResponsesPerPoll,
               },
+              {
+                label: "AI credits",
+                value: planDetailsData?.maxAiCalls + "⚡",
+              }
             ].map(({ label, value }) => (
               <div
                 key={label}
@@ -214,7 +218,7 @@ function PlanDetails({plan}: PlanDetailsProps) {
             <div className="flex flex-wrap gap-2">
               {[
                 ["Advanced Analytics", planDetailsData?.advancedAnalytics],
-                ["CSV Export", planDetailsData?.csvExport],
+                ["Data & CSV Export", planDetailsData?.csvExport],
                 ["Remove Branding", planDetailsData?.removeBranding],
                 ["Custom Branding", planDetailsData?.customBranding],
                 ["Priority Support", planDetailsData?.prioritySupport],
@@ -412,12 +416,12 @@ function PlanDetails({plan}: PlanDetailsProps) {
                       desc: "Understand your audience with deeper insights.",
                     },
                     {
-                      title: "CSV Export",
+                      title: "Data & CSV Export",
                       desc: "Download your poll responses for analysis.",
                     },
                     {
-                      title: "Remove Branding",
-                      desc: "Create cleaner polls without platform branding.",
+                      title: "AI Credits",
+                      desc: "Build your polls completely with AI.",
                     },
                     {
                       title: "Higher Limits",
@@ -523,12 +527,12 @@ function PlanDetails({plan}: PlanDetailsProps) {
                       desc: "Make your polls match your brand identity.",
                     },
                     {
-                      title: "CSV Export",
+                      title: "Data & CSV Export",
                       desc: "Export your polling data anytime.",
                     },
                     {
-                      title: "Remove Branding",
-                      desc: "Keep your polls completely white-label.",
+                      title: "AI Credits",
+                      desc: "Build your polls completely with AI.",
                     },
                     {
                       title: "Priority Support",

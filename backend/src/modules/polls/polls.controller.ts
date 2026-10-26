@@ -335,7 +335,7 @@ const checkPollCreationLimit = async (userId: mongoose.Types.ObjectId, plan: "FR
         const pollCount = await pollModel.countDocuments({createdBy: userId, status: "active"}, {session});
 
         if(pollCount >= Number(maxPolls)){
-          throw ApiError.forbidden("Free plan limit reaced");
+          throw ApiError.forbidden("Free plan limit reached");
         }
         // if the user has less than 5 poll created then user can create
         result = true;
@@ -1243,15 +1243,40 @@ export const callAIAgentToResponse = asyncHandler(async (req: AuthRequest, res: 
   const {prompt} = req.body;
   const userId = req.user?.id.toString()!;
 
-  // step:2 - check the input is right or not by inputGuardrail
+  // step:2 - increse the usage and check usage should be under user's plan limit
+  const AI_USAGE_KEY = `ai-usage:${userId}`;
+  const currentAiUsage = await redis.incr(AI_USAGE_KEY);
+  if(currentAiUsage === 1){
+    await redis.expire(AI_USAGE_KEY, 60 * 60 * 24 * 30); // limit reset in 30 days
+  }
+
+  const maxAiCalls = hasFeatureOnSubscriptionPlan(req.user?.plan!, "maxAiCalls");
+  if(Number(maxAiCalls) < currentAiUsage){
+    throw ApiError.paymentRequired("you have reached your plan limit");
+  }
+
+  // step:3 - check the input is right or not by inputGuardrail
   const isAllowed = await inputGuardrail(prompt, userId, signal);
   if(isAllowed.decision === "reject"){
     throw ApiError.forbidden(isAllowed.reason);
   }
 
-  // step:3 - now the input is right then call the main llm to get the response
+  // step:4 - now the input is right then call the main llm to get the response
   const result = await callMainLLM(prompt, userId, signal);
   // console.dir(result, {depth: null});
 
   ApiResponse.ok(res, "Ai Agent response received", result);
+})
+
+
+
+export const resetAgentChat = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // step:1 - extract the userid
+  const userId = req.user?.id.toString()!;
+
+  // step:2 - remove the user history chat from the redis
+  const key = `agent-chat:${userId}`;
+  await redis.del(key);
+  
+  ApiResponse.ok(res, "Chat Removed successfully");
 })

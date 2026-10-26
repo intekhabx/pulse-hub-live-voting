@@ -15,6 +15,8 @@ import mongoose from 'mongoose';
 import pollModel from '../polls/polls.model';
 import responseModel from '../response/response.model';
 import { pollExpiryQueue } from '../../config/bullmq.config';
+import customBrandingModel from '../subscription/custom-branding.model';
+import { deleteImageFileOnImageKit } from '../subscription/subscription.controller';
 
 
 function makeTokenHash(token: string){
@@ -310,8 +312,8 @@ export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Resp
 
   await session.withTransaction(async () => {
 
-    // 1 - find all polls of the user
-    const polls = await pollModel.find({ createdBy: userId }, { _id: 1 }, { session });
+    // 1 - find all polls of the user //.lean() ye mongoose object ki jagah js object deta h  aur js object md .save(), .populate() ye sab nhi hota h
+    const polls = await pollModel.find({ createdBy: userId }, { _id: 1 }, { session }).lean();
 
     const pollIds = polls.map(poll => poll._id);
 
@@ -337,7 +339,18 @@ export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Resp
     // 4 - delete all polls of the user
     await pollModel.deleteMany({ createdBy: userId }, { session });
 
-    // 5 - Finally delete the user
+    // 5 - delete user AiChatHistory and user AiUsage limit from redis
+    await redis.del(`agent-chat:${userId}`);
+    await redis.del(`ai-usage:${userId}`);
+
+    // 6 - delete user custom-branding and branding image if exists
+    const customBranding = await customBrandingModel.findOne({userId});
+    if(customBranding){
+      await deleteImageFileOnImageKit(customBranding.imageFileId);
+      await customBrandingModel.deleteOne({userId});
+    }
+
+    // 7 - Finally delete the user
     await userModel.deleteOne({ _id: userId }, { session });
   });
 
